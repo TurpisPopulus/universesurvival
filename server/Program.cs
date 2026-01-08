@@ -13,10 +13,13 @@ if (args.Length > 0 && int.TryParse(args[0], out var parsedPort))
 }
 
 var gate = new object();
-var dataPath = Path.Combine(Directory.GetCurrentDirectory(), "players.json");
-var accountsPath = Path.Combine(Directory.GetCurrentDirectory(), "accounts.json");
-var worldPath = Path.Combine(Directory.GetCurrentDirectory(), "world.json");
-var players = LoadPlayers(dataPath);
+var baseDir = AppContext.BaseDirectory;
+var dataDir = Path.Combine(baseDir, "Data");
+Directory.CreateDirectory(dataDir);
+var playersPath = Path.Combine(dataDir, "players.json");
+var accountsPath = Path.Combine(dataDir, "accounts.json");
+var worldPath = Path.Combine(dataDir, "world.json");
+var players = LoadPlayers(playersPath);
 var accounts = LoadAccounts(accountsPath);
 var world = LoadWorld(worldPath);
 var endpoints = new Dictionary<string, IPEndPoint>(StringComparer.Ordinal);
@@ -31,7 +34,7 @@ if (NormalizeAccounts(accounts))
 
 void SaveAll()
 {
-    SavePlayers(dataPath, players, gate);
+    SavePlayers(playersPath, players, gate);
     SaveAccounts(accountsPath, accounts, gate);
 }
 
@@ -39,7 +42,11 @@ using var udp = new UdpClient(port);
 Console.WriteLine($"UDP server listening on 0.0.0.0:{port}");
 Console.WriteLine("Payload format: id|name|x|y");
 Console.WriteLine($"World loaded: {world.Width}x{world.Height} tiles");
-Console.WriteLine($"World path: {worldPath}");
+Console.WriteLine($"[DATA] baseDir   = {baseDir}");
+Console.WriteLine($"[DATA] dataDir   = {dataDir}");
+Console.WriteLine($"[DATA] worldPath = {worldPath}");
+Console.WriteLine($"[DATA] playersPath = {playersPath}");
+Console.WriteLine($"[DATA] accountsPath = {accountsPath}");
 Console.WriteLine("Press Ctrl+C to stop.");
 
 var cts = new CancellationTokenSource();
@@ -58,7 +65,7 @@ var saveTask = Task.Run(async () =>
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
         while (await timer.WaitForNextTickAsync(cts.Token))
         {
-            SavePlayers(dataPath, players, gate);
+            SavePlayers(playersPath, players, gate);
         }
     }
     catch (OperationCanceledException)
@@ -214,7 +221,6 @@ while (!cts.IsCancellationRequested)
         {
             appliedUpdate = ApplyMapUpdate(world, mapUpdate);
             SaveWorld(worldPath, world);
-            world = LoadWorld(worldPath);
         }
         var appliedCount = appliedUpdate.Changes?.Length ?? 0;
         Console.WriteLine($"Map update applied: {appliedCount} changes saved");
@@ -737,7 +743,7 @@ static void SaveWorld(string path, WorldMap world)
         {
             WriteIndented = true
         });
-        File.WriteAllText(path, json, Encoding.UTF8);
+        WriteAllTextAtomic(path, json);
     }
     catch (Exception ex)
     {
@@ -759,7 +765,7 @@ static void SavePlayers(string path, Dictionary<string, PlayerState> players, ob
         {
             WriteIndented = true
         });
-        File.WriteAllText(path, json, Encoding.UTF8);
+        WriteAllTextAtomic(path, json);
     }
     catch (Exception ex)
     {
@@ -781,11 +787,31 @@ static void SaveAccounts(string path, Dictionary<string, Account> accounts, obje
         {
             WriteIndented = true
         });
-        File.WriteAllText(path, json, Encoding.UTF8);
+        WriteAllTextAtomic(path, json);
     }
     catch (Exception ex)
     {
         Console.WriteLine($"Save error: {ex.Message}");
+    }
+}
+
+static void WriteAllTextAtomic(string path, string content)
+{
+    var dir = Path.GetDirectoryName(path);
+    if (!string.IsNullOrEmpty(dir))
+    {
+        Directory.CreateDirectory(dir);
+    }
+
+    var tmp = path + ".tmp";
+    File.WriteAllText(tmp, content, new UTF8Encoding(false));
+    if (File.Exists(path))
+    {
+        File.Replace(tmp, path, null);
+    }
+    else
+    {
+        File.Move(tmp, path);
     }
 }
 
