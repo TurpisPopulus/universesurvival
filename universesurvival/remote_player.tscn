@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://d4qf0m0hny8k7"]
+
+[ext_resource type="Script" path="res://RemotePlayer.gd" id="1_1y1rc"]
+[ext_resource type="Texture2D" uid="uid://c8gdxhpc35shw" path="res://player64.png" id="2_2nq3w"]
+
+[node name="RemotePlayer" type="Node2D"]
+script = ExtResource("1_1y1rc")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_2nq3w")
+
+[node name="Label" type="Label" parent="."]
+position = Vector2(-60, -90)
+size = Vector2(120, 24)
+horizontal_alignment = 1
+text = "remote"

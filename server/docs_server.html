@@ -1,0 +1,293 @@
+﻿<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kilo UDP Server — Документация</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1e1c18;
+        --muted: #5a524a;
+        --bg: #f4efe6;
+        --accent: #1f6f5f;
+        --accent-soft: #cde7df;
+        --warm: #f3c37a;
+        --panel: #ffffff;
+        --stroke: rgba(30, 28, 24, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Tahoma", sans-serif;
+        background:
+          radial-gradient(circle at 15% 15%, #fff9ef 0%, transparent 55%),
+          radial-gradient(circle at 85% 10%, #e2f3ee 0%, transparent 52%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 36px 20px 60px;
+        position: relative;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .brand {
+        font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+
+      .tag {
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .hero {
+        margin-top: 28px;
+        padding: 26px;
+        border-radius: 24px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        box-shadow: 0 20px 60px rgba(30, 28, 24, 0.12);
+      }
+
+      h1 {
+        font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+        font-size: clamp(32px, 4vw, 44px);
+        margin: 0 0 10px;
+      }
+
+      p {
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+        margin-top: 22px;
+      }
+
+      .card {
+        background: var(--panel);
+        border-radius: 18px;
+        padding: 18px;
+        border: 1px solid var(--stroke);
+      }
+
+      .card h3 {
+        margin-top: 0;
+      }
+
+      .section {
+        margin-top: 32px;
+      }
+
+      .section h2 {
+        margin-bottom: 10px;
+      }
+
+      pre {
+        margin: 0;
+        padding: 14px;
+        background: #101417;
+        color: #f0f3f7;
+        border-radius: 14px;
+        overflow-x: auto;
+        font-family: "Consolas", "Courier New", monospace;
+        font-size: 14px;
+      }
+
+      code {
+        font-family: "Consolas", "Courier New", monospace;
+      }
+
+      .pill {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(31, 111, 95, 0.15);
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 12px;
+      }
+
+      .note {
+        background: linear-gradient(120deg, rgba(31, 111, 95, 0.1), rgba(243, 195, 122, 0.25));
+        border-radius: 16px;
+        padding: 16px;
+        border: 1px dashed rgba(31, 111, 95, 0.3);
+      }
+
+      footer {
+        margin-top: 40px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 640px) {
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div class="brand">Kilo UDP Server</div>
+        <div class="tag">MMORPG foundation · Stage 1</div>
+      </header>
+
+      <section class="hero">
+        <h1>Минимальный UDP сервер для прототипа</h1>
+        <p>
+          Сервер принимает и отдает UDP пакеты с данными игрока: <strong>id</strong>,
+          <strong>name</strong>, <strong>x</strong>, <strong>y</strong>. Это стартовая
+          точка для сетевого слоя MMORPG на Godot (C#).
+        </p>
+        <div class="grid">
+          <div class="card">
+            <h3>Что делает</h3>
+            <p>Слушает порт, парсит пакеты игроков, хранит игроков и карту в памяти и рассылает обновления.</p>
+          </div>
+          <div class="card">
+            <h3>Что не делает</h3>
+            <p>Нет БД, комнат, NPC или валидации прав на изменение карты.</p>
+          </div>
+          <div class="card">
+            <h3>Формат пакета</h3>
+            <p><span class="pill">id|name|x|y</span> (UTF-8, разделитель — |).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Быстрый старт</h2>
+        <p>Сервер готов к запуску сразу после сборки.</p>
+        <pre><code>dotnet build
+
+dotnet run --project KiloServer.csproj
+# или с другим портом
+
+dotnet run --project KiloServer.csproj -- 7777</code></pre>
+      </section>
+
+      <section class="section">
+        <h2>Протокол</h2>
+        <div class="card">
+          <p><strong>Запрос / Ответ</strong></p>
+          <p>Клиент отправляет одну строку, сервер отвечает списком игроков.</p>
+          <pre><code>player-1|Ari|12.5|8.75</code></pre>
+          <p>Ответ содержит несколько строк (по одной на игрока).</p>
+          <pre><code>player-1|Ari|12.5|8.75
+player-2|Nova|4|9</code></pre>
+          <p>Числа используют точку как разделитель.</p>
+        </div>
+        <div class="card">
+          <p><strong>Регистрация и вход</strong></p>
+          <p>Регистрация создает аккаунт на сервере.</p>
+          <pre><code>REGISTER|name|password</code></pre>
+          <p>Вход проверяет пароль и резервацию имени.</p>
+          <pre><code>LOGIN|name|password</code></pre>
+          <p>Ответ на успешный вход содержит сохраненные координаты и уровень доступа.</p>
+          <pre><code>OK|x|y|accessLevel</code></pre>
+          <p>Для проверки доступности сервера используется пинг.</p>
+          <pre><code>PING</code></pre>
+        </div>
+        <div class="card">
+          <p><strong>Карта</strong></p>
+          <p>Клиент запрашивает чанки карты по координатам чанка.</p>
+          <pre><code>CHUNK|cx|cy</code></pre>
+          <p>Ответ — JSON сетка тайлов 64x64.</p>
+          <pre><code>{"cx":0,"cy":0,"size":64,"tiles":[...]}</code></pre>
+          <p>Обновления карты отправляются с измененными тайлами.</p>
+          <pre><code>MAPUPDATE|{"changes":[{"x":10,"y":5,"tile":1}]}</code></pre>
+          <p>Сервер применяет изменения, сохраняет карту и рассылает MAPUPDATE всем клиентам.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Сохранение</h2>
+        <div class="card">
+          <p>Состояние игроков хранится в памяти и сохраняется в файл <code>players.json</code>.</p>
+          <p>Аккаунты сохраняются в файл <code>accounts.json</code> при регистрации.</p>
+          <p>Пароли не хранятся в открытом виде, используется соль и хэш.</p>
+          <p>Карта хранится в файле <code>world.json</code> и обновляется при MAPUPDATE.</p>
+          <p>Сохранение выполняется раз в 5 минут и при завершении сервера.</p>
+          <p>Игрок считается активным, если присылал пакет в последние 10 секунд.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Авторизация</h2>
+        <div class="card">
+          <p>Перед входом клиент отправляет <code>LOGIN|name|password</code>.</p>
+          <p>Ошибки: <code>ERR|not_found</code>, <code>ERR|wrong_password</code>, <code>ERR|name_taken</code>.</p>
+          <p>Успешный LOGIN резервирует имя на 10 секунд активности.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Пример отправки через PowerShell</h2>
+        <pre><code>$udp = New-Object System.Net.Sockets.UdpClient
+$endpoint = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Parse("127.0.0.1"), 7777)
+$payload = "player-1|Ari|12.5|8.75"
+$bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+$udp.Send($bytes, $bytes.Length, $endpoint)
+
+$remote = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Any, 0)
+$reply = $udp.Receive([ref]$remote)
+[System.Text.Encoding]::UTF8.GetString($reply)</code></pre>
+      </section>
+
+      <section class="section">
+        <h2>Интеграция с Godot (C#)</h2>
+        <div class="card">
+          <p>Скетч для клиента. Это не полный класс, а базовая идея отправки.</p>
+          <pre><code>var udp = new System.Net.Sockets.UdpClient();
+var payload = "player-1|Ari|12.5|8.75";
+var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+await udp.SendAsync(bytes, bytes.Length, "127.0.0.1", 7777);
+
+var result = await udp.ReceiveAsync();
+var response = System.Text.Encoding.UTF8.GetString(result.Buffer);</code></pre>
+        </div>
+      </section>
+
+      <section class="section note">
+        <h2>Следующий шаг</h2>
+        <p>
+          Когда понадобится, можно добавить проверку прав на изменения карты
+          и валидацию формата тайлов перед применением.
+        </p>
+      </section>
+
+      <footer>
+        <p>Файл создан автоматически. Если нужно добавить разделы — скажите.</p>
+      </footer>
+    </div>
+  </body>
+</html>

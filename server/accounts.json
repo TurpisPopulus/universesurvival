@@ -1,0 +1,37 @@
+﻿[
+  {
+    "Name": "test",
+    "PasswordHash": "RFAnCGULqy/r1iARwjbSxndAGEc9Y4YsvVJuGnoFdns=",
+    "Salt": "c/0JfiRNKh79W0O7dse2Mg==",
+    "Password": "",
+    "AccessLevel": 5
+  },
+  {
+    "Name": "test2",
+    "PasswordHash": "WgFg8\u002B1NayKz\u002Bbjqd8yIeAs\u002Bk9OYueo9Gvk\u002Bi72oZ2Q=",
+    "Salt": "Lb9BZd8pQXlgGV0m3iiuoQ==",
+    "Password": "",
+    "AccessLevel": 5
+  },
+  {
+    "Name": "test3",
+    "PasswordHash": "jRXyBG91G4muHT7H00/XGm8yKB6gJE216ipV63irJ4A=",
+    "Salt": "\u002BZz8hWgU7vfYGxPmcNy0Ug==",
+    "Password": "",
+    "AccessLevel": 5
+  },
+  {
+    "Name": "test4",
+    "PasswordHash": "Y1j7E8VhL47wsrrJeVZbBy\u002Bn5\u002BDm4ultQal5WkYheAI=",
+    "Salt": "ENkOl3OYLbWL6nSyMRu8SQ==",
+    "Password": "",
+    "AccessLevel": 5
+  },
+  {
+    "Name": "admin",
+    "PasswordHash": "9g8Xsq/uVLw/7sDxNi8w5XthFpnhLnueLtqyTJJjzfk=",
+    "Salt": "5Q9RKOOIfea/QHMoXi6tuA==",
+    "Password": "",
+    "AccessLevel": 1
+  }
+]

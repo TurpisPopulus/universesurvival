@@ -1,0 +1,112 @@
+[gd_scene load_steps=2 format=3 uid="uid://b6b3g7l3k65y1"]
+
+[ext_resource type="Script" uid="uid://c6r8v4x4d0k5l" path="res://MainMenu.gd" id="1_8sp31"]
+
+[node name="MainMenu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_8sp31")
+
+[node name="Center" type="CenterContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="MenuVBox" type="VBoxContainer" parent="Center"]
+alignment = 1
+
+[node name="Title" type="Label" parent="Center/MenuVBox"]
+text = "UNIVERSE SURVIVAL"
+horizontal_alignment = 1
+
+[node name="EnterButton" type="Button" parent="Center/MenuVBox"]
+text = "Enter"
+
+[node name="CreateButton" type="Button" parent="Center/MenuVBox"]
+text = "Create Player"
+
+[node name="SettingsButton" type="Button" parent="Center/MenuVBox"]
+text = "Settings"
+
+[node name="ExitButton" type="Button" parent="Center/MenuVBox"]
+text = "Exit"
+
+[node name="CreateOverlay" type="CenterContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+visible = false
+
+[node name="CreatePanel" type="PanelContainer" parent="CreateOverlay"]
+custom_minimum_size = Vector2(360, 0)
+
+[node name="CreateVBox" type="VBoxContainer" parent="CreateOverlay/CreatePanel"]
+
+[node name="CreateTitle" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox"]
+text = "Create Player"
+horizontal_alignment = 1
+
+[node name="NameInput" type="LineEdit" parent="CreateOverlay/CreatePanel/CreateVBox"]
+placeholder_text = "Name"
+
+[node name="PasswordInput" type="LineEdit" parent="CreateOverlay/CreatePanel/CreateVBox"]
+placeholder_text = "Password"
+secret = true
+
+[node name="ConfirmInput" type="LineEdit" parent="CreateOverlay/CreatePanel/CreateVBox"]
+placeholder_text = "Confirm Password"
+secret = true
+
+[node name="StatusLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox"]
+text = ""
+
+[node name="Buttons" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox"]
+
+[node name="CreateConfirm" type="Button" parent="CreateOverlay/CreatePanel/CreateVBox/Buttons"]
+text = "Create"
+
+[node name="CreateBack" type="Button" parent="CreateOverlay/CreatePanel/CreateVBox/Buttons"]
+text = "Back"
+
+[node name="LoginOverlay" type="CenterContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+visible = false
+
+[node name="LoginPanel" type="PanelContainer" parent="LoginOverlay"]
+custom_minimum_size = Vector2(360, 0)
+
+[node name="LoginVBox" type="VBoxContainer" parent="LoginOverlay/LoginPanel"]
+
+[node name="LoginTitle" type="Label" parent="LoginOverlay/LoginPanel/LoginVBox"]
+text = "Enter"
+horizontal_alignment = 1
+
+[node name="NameInput" type="LineEdit" parent="LoginOverlay/LoginPanel/LoginVBox"]
+placeholder_text = "Name"
+
+[node name="PasswordInput" type="LineEdit" parent="LoginOverlay/LoginPanel/LoginVBox"]
+placeholder_text = "Password"
+secret = true
+
+[node name="StatusLabel" type="Label" parent="LoginOverlay/LoginPanel/LoginVBox"]
+text = ""
+
+[node name="Buttons" type="HBoxContainer" parent="LoginOverlay/LoginPanel/LoginVBox"]
+
+[node name="LoginConfirm" type="Button" parent="LoginOverlay/LoginPanel/LoginVBox/Buttons"]
+text = "Enter"
+
+[node name="LoginBack" type="Button" parent="LoginOverlay/LoginPanel/LoginVBox/Buttons"]
+text = "Back"
+
+[node name="ServerStatus" type="Label" parent="."]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_right = 220.0
+offset_top = -28.0
+offset_bottom = -8.0
+text = "Server: offline"
+
+[node name="StatusTimer" type="Timer" parent="."]
+wait_time = 2.0
+autostart = true

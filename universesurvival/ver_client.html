@@ -1,0 +1,271 @@
+﻿<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Universe Survival Client - Версия</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1e1c18;
+        --muted: #5a524a;
+        --bg: #f4efe6;
+        --accent: #1f6f5f;
+        --accent-soft: #cde7df;
+        --warm: #f3c37a;
+        --panel: #ffffff;
+        --stroke: rgba(30, 28, 24, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Tahoma", sans-serif;
+        background:
+          radial-gradient(circle at 15% 15%, #fff9ef 0%, transparent 55%),
+          radial-gradient(circle at 85% 10%, #e2f3ee 0%, transparent 52%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 36px 20px 60px;
+        position: relative;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .brand {
+        font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+
+      .tag {
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .hero {
+        margin-top: 28px;
+        padding: 26px;
+        border-radius: 24px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        box-shadow: 0 20px 60px rgba(30, 28, 24, 0.12);
+      }
+
+      h1 {
+        font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+        font-size: clamp(32px, 4vw, 44px);
+        margin: 0 0 10px;
+      }
+
+      p {
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .card {
+        background: var(--panel);
+        border-radius: 18px;
+        padding: 18px;
+        border: 1px solid var(--stroke);
+        margin-top: 18px;
+      }
+
+      ul {
+        margin: 10px 0 0 18px;
+        color: var(--muted);
+      }
+
+      footer {
+        margin-top: 40px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 640px) {
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div class="brand">Universe Survival Client</div>
+        <div class="tag">Версия</div>
+      </header>
+
+      <section class="hero">
+        <h1>История версий</h1>
+        <p>Формат: v0.000 / дата / список изменений.</p>
+        <div class="card">
+          <strong>v0.021 / 2026-01-08</strong>
+          <ul>
+            <li>Карта повторно ищет Player и запрашивает чанки после появления.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.020 / 2026-01-08</strong>
+          <ul>
+            <li>Координаты карты смещены через map_origin_tile для совпадения с сервером.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.019 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлен вывод примера координат в MAPUPDATE для отладки.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.018 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлено логирование отправки и получения MAPUPDATE для диагностики.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.017 / 2026-01-08</strong>
+          <ul>
+            <li>Исправлена кодировка русских подписей в main.tscn.</li>
+            <li>Палитра тайлов сохраняет правильные размеры и позволяет выбирать тайлы.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.016 / 2026-01-08</strong>
+          <ul>
+            <li>main.tscn сохранен без BOM для корректной загрузки Godot.</li>
+            <li>Удален некорректный uid у RemotePlayer.gd в remote_player.tscn.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.015 / 2026-01-08</strong>
+          <ul>
+            <li>Выбор тайла в редакторе заменен на визуальную палитру из tileset.</li>
+            <li>TileMap теперь строит атлас по всему набору тайлов.</li>
+            <li>MAPUPDATE обрабатывается через UDP игрока для доставки изменений другим клиентам.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.014 / 2026-01-08</strong>
+          <ul>
+            <li>Кнопка админки заменяет редактор карты и открывает меню из 10 кнопок.</li>
+            <li>Добавлено окно редактора карты с выбором тайлов, сохранением и возвратом.</li>
+            <li>Карта принимает обновления от сервера и отправляет изменения при сохранении.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.013 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлен уровень доступа игрока после входа.</li>
+            <li>Админ получает кнопку редактора карты в игре.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.012 / 2026-01-08</strong>
+          <ul>
+            <li>Упрощены типы в WorldMap.gd для устранения ошибки парсинга.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.011 / 2026-01-08</strong>
+          <ul>
+            <li>Карта запрашивает чанки у сервера по CHUNK|cx|cy.</li>
+            <li>TileMap заполняется данными JSON сетки 64x64.</li>
+            <li>Реализован кэш видимости 5x5 чанков вокруг игрока.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.010 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлена отрисовка карты на TileMap с чанками 64x64 тайла.</li>
+            <li>Рендер ограничен видимостью 5x5 чанков вокруг игрока.</li>
+            <li>Подключен тестовый tileset 32x32 с двумя тайлами.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.009 / 2026-01-08</strong>
+          <ul>
+            <li>Исправлено предупреждение о Variant при запуске Godot.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.008 / 2026-01-08</strong>
+          <ul>
+            <li>LOGIN обрабатывает координаты входа от сервера.</li>
+            <li>Игрок появляется в сохраненной позиции после входа.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.007 / 2026-01-08</strong>
+          <ul>
+            <li>Исправлена ошибка синтаксиса в MainMenu.gd (статус сервера).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.006 / 2026-01-08</strong>
+          <ul>
+            <li>Регистрация и вход перенесены на сервер (REGISTER/LOGIN).</li>
+            <li>Удалено локальное сохранение пользователей и текущего имени.</li>
+            <li>Добавлен статус сервера в нижнем левом углу меню.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.005 / 2026-01-08</strong>
+          <ul>
+            <li>Кнопка Enter всегда активна и требует ввод имени и пароля.</li>
+            <li>Добавлена проверка существующего имени при регистрации.</li>
+            <li>Вход проверяет наличие имени онлайн через сервер.</li>
+            <li>Текущий игрок сохраняется в user://current_player.json.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.004 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлено главное меню и форма создания игрока.</li>
+            <li>Сцена main_menu.tscn назначена стартовой.</li>
+            <li>Имя игрока загружается из user://current_player.json.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.003 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлена случайная генерация player_id при запуске.</li>
+            <li>Документация дополнена заметкой о random id.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.002 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлена обработка списка игроков от сервера.</li>
+            <li>Появилась сцена удаленного игрока и спавн по id.</li>
+            <li>Документация дополнена разделом про удаленных игроков.</li>
+          </ul>
+        </div>
+      </section>
+
+      <footer>
+        <p>Файл версий. Обновляй при изменениях клиента.</p>
+      </footer>
+    </div>
+  </body>
+</html>

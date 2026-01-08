@@ -1,0 +1,217 @@
+﻿<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kilo UDP Server - Версия</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1e1c18;
+        --muted: #5a524a;
+        --bg: #f4efe6;
+        --accent: #1f6f5f;
+        --accent-soft: #cde7df;
+        --warm: #f3c37a;
+        --panel: #ffffff;
+        --stroke: rgba(30, 28, 24, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Tahoma", sans-serif;
+        background:
+          radial-gradient(circle at 15% 15%, #fff9ef 0%, transparent 55%),
+          radial-gradient(circle at 85% 10%, #e2f3ee 0%, transparent 52%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 36px 20px 60px;
+        position: relative;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .brand {
+        font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+
+      .tag {
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .hero {
+        margin-top: 28px;
+        padding: 26px;
+        border-radius: 24px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        box-shadow: 0 20px 60px rgba(30, 28, 24, 0.12);
+      }
+
+      h1 {
+        font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+        font-size: clamp(32px, 4vw, 44px);
+        margin: 0 0 10px;
+      }
+
+      p {
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .card {
+        background: var(--panel);
+        border-radius: 18px;
+        padding: 18px;
+        border: 1px solid var(--stroke);
+        margin-top: 18px;
+      }
+
+      ul {
+        margin: 10px 0 0 18px;
+        color: var(--muted);
+      }
+
+      footer {
+        margin-top: 40px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 640px) {
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div class="brand">Kilo UDP Server</div>
+        <div class="tag">Версия</div>
+      </header>
+
+      <section class="hero">
+        <h1>История версий</h1>
+        <p>Формат: v0.000 / дата / список изменений.</p>
+        <div class="card">
+          <strong>v0.014 / 2026-01-08</strong>
+          <ul>
+            <li>Уточнено логирование чанков и образца MAPUPDATE для диагностики.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.013 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлено логирование пути world.json и чанков с последним изменением.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.012 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлена диагностика координат MAPUPDATE при отклонении.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.011 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлено логирование приема, применения и рассылки MAPUPDATE.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.010 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлен прием MAPUPDATE и сохранение изменений карты.</li>
+            <li>Сервер рассылает обновления карты всем клиентам.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.009 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлен уровень доступа для аккаунтов и выдача при входе.</li>
+            <li>Админ получает уровень 1, остальные по умолчанию 5.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.008 / 2026-01-08</strong>
+          <ul>
+            <li>Исправлен конфликт имен переменных response при сборке.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.007 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлена загрузка карты world.json в RAM.</li>
+            <li>Реализован ответ на CHUNK|cx|cy (JSON сетка 64x64).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.006 / 2026-01-08</strong>
+          <ul>
+            <li>Убрано предупреждение SYSLIB0060 для PBKDF2.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.005 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлено сохранение аккаунтов и игроков при завершении сервера.</li>
+            <li>LOGIN возвращает сохраненные координаты игрока.</li>
+            <li>Пароли хранятся как хэш с солью (PBKDF2).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.004 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлена регистрация и вход с паролем через REGISTER/LOGIN.</li>
+            <li>Сервер сохраняет аккаунты в accounts.json.</li>
+            <li>Добавлен ответ на PING для проверки доступности.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.003 / 2026-01-08</strong>
+          <ul>
+            <li>Добавлена проверка имени онлайн через LOGIN.</li>
+            <li>Запрещен одновременный вход под одним именем.</li>
+            <li>Успешный LOGIN резервирует имя на время активности.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.002 / 2026-01-08</strong>
+          <ul>
+            <li>Сервер рассылает список игроков всем клиентам.</li>
+            <li>Добавлено сохранение в players.json с периодическим авто-сейвом.</li>
+          </ul>
+        </div>
+      </section>
+
+      <footer>
+        <p>Файл версий. Обновляй при изменениях сервера.</p>
+      </footer>
+    </div>
+  </body>
+</html>

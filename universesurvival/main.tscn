@@ -1,0 +1,98 @@
+[gd_scene load_steps=5 format=3 uid="uid://cgvngah40k2v1"]
+
+[ext_resource type="PackedScene" uid="uid://dpx63pigio2ff" path="res://player.tscn" id="1_ig7tw"]
+[ext_resource type="Script" uid="uid://y07dgnjxwcqju" path="res://WorldMap.gd" id="2_qe77o"]
+[ext_resource type="Script" path="res://Main.gd" id="3_main_script"]
+[ext_resource type="Script" path="res://TilePalette.gd" id="4_tile_palette"]
+
+[node name="Main" type="Node2D"]
+position = Vector2(763, 421)
+script = ExtResource("3_main_script")
+
+[node name="WorldMap" type="TileMap" parent="."]
+z_index = -1
+script = ExtResource("2_qe77o")
+player_path = NodePath("../Player")
+
+[node name="Ui" type="CanvasLayer" parent="."]
+
+[node name="AdminButton" type="Button" parent="Ui"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 216.0
+offset_bottom = 48.0
+text = "Админка"
+
+[node name="AdminMenu" type="PanelContainer" parent="Ui"]
+visible = false
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 236.0
+offset_bottom = 380.0
+
+[node name="AdminVBox" type="VBoxContainer" parent="Ui/AdminMenu"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 212.0
+offset_bottom = 344.0
+theme_override_constants/separation = 6
+
+[node name="AdminMapEditorButton" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Редактор карты"
+
+[node name="AdminEmpty1" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Пусто"
+
+[node name="AdminEmpty2" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Пусто"
+
+[node name="AdminEmpty3" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Пусто"
+
+[node name="AdminEmpty4" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Пусто"
+
+[node name="AdminEmpty5" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Пусто"
+
+[node name="AdminEmpty6" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Пусто"
+
+[node name="AdminEmpty7" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Пусто"
+
+[node name="AdminEmpty8" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Пусто"
+
+[node name="AdminBackButton" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Назад"
+
+[node name="MapEditorPanel" type="PanelContainer" parent="Ui"]
+visible = false
+offset_left = 260.0
+offset_top = 16.0
+offset_right = 520.0
+offset_bottom = 160.0
+
+[node name="MapEditorVBox" type="VBoxContainer" parent="Ui/MapEditorPanel"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 244.0
+offset_bottom = 144.0
+theme_override_constants/separation = 8
+
+[node name="TilePalette" type="TextureRect" parent="Ui/MapEditorPanel/MapEditorVBox"]
+script = ExtResource("4_tile_palette")
+
+[node name="MapEditorActions" type="HBoxContainer" parent="Ui/MapEditorPanel/MapEditorVBox"]
+theme_override_constants/separation = 8
+
+[node name="MapEditorSaveButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
+text = "Сохранить"
+
+[node name="MapEditorBackButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
+text = "Назад"
+
+[node name="Player" parent="." instance=ExtResource("1_ig7tw")]
+position = Vector2(-189.9254, -91.345856)
+
