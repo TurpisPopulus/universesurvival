@@ -189,7 +189,11 @@ while (!cts.IsCancellationRequested)
                 );
             }
         }
-        var chunkResponse = BuildChunkResponse(world, chunkRequest);
+        string chunkResponse;
+        lock (gate)
+        {
+            chunkResponse = BuildChunkResponse(world, chunkRequest);
+        }
         await SendToAsync(udp, chunkResponse, result.RemoteEndPoint);
         continue;
     }
@@ -210,6 +214,7 @@ while (!cts.IsCancellationRequested)
         {
             appliedUpdate = ApplyMapUpdate(world, mapUpdate);
             SaveWorld(worldPath, world);
+            world = LoadWorld(worldPath);
         }
         var appliedCount = appliedUpdate.Changes?.Length ?? 0;
         Console.WriteLine($"Map update applied: {appliedCount} changes saved");
