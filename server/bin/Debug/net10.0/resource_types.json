@@ -1,0 +1,35 @@
+{
+  "Types": [
+    {
+      "TypeId": "tree_oak",
+      "DisplayName": "Oak Tree",
+      "MaxAmount": 8,
+      "GatherTool": "axe",
+      "Drops": [
+        {
+          "ItemId": "wood_log",
+          "Min": 2,
+          "Max": 4
+        }
+      ]
+    },
+    {
+      "TypeId": "tree_pine",
+      "DisplayName": "Pine Tree",
+      "MaxAmount": 10,
+      "GatherTool": "axe",
+      "Drops": [
+        {
+          "ItemId": "wood_log",
+          "Min": 3,
+          "Max": 5
+        },
+        {
+          "ItemId": "apple",
+          "Min": 0,
+          "Max": 1
+        }
+      ]
+    }
+  ]
+}

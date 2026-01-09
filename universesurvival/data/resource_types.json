@@ -1,0 +1,35 @@
+{
+  "types": [
+    {
+      "typeId": "tree_oak",
+      "displayName": "Oak Tree",
+      "maxAmount": 8,
+      "gatherTool": "axe",
+      "drops": [
+        { "itemId": "wood_log", "min": 2, "max": 4 }
+      ],
+      "texture": "res://tiles/resources_trees.png",
+      "palette": [0, 0],
+      "tiles": [
+        { "atlas": [0, 1], "offset": [0, 0], "blocking": true },
+        { "atlas": [0, 0], "offset": [0, -1], "blocking": false }
+      ]
+    },
+    {
+      "typeId": "tree_pine",
+      "displayName": "Pine Tree",
+      "maxAmount": 10,
+      "gatherTool": "axe",
+      "drops": [
+        { "itemId": "wood_log", "min": 3, "max": 5 },
+        { "itemId": "apple", "min": 0, "max": 1 }
+      ],
+      "texture": "res://tiles/resources_trees.png",
+      "palette": [1, 0],
+      "tiles": [
+        { "atlas": [1, 1], "offset": [0, 0], "blocking": true },
+        { "atlas": [1, 0], "offset": [0, -1], "blocking": false }
+      ]
+    }
+  ]
+}

@@ -206,11 +206,13 @@
   Program.cs               # основной файл сервера
   run_server.bat           # запуск
   object_types.json        # каталог типов объектов
+  resource_types.json      # каталог типов ресурсов
   accounts.json            # аккаунты (пароли + доступ)
   players.json             # состояния игроков
   Data/
     chunk_*.json            # чанки карты
     objects_*.json          # чанки объектов
+    resources_*.json        # чанки ресурсов
     accounts.json
     players.json</code></pre>
       </section>
@@ -221,7 +223,7 @@
           <ul>
             <li>UDP слушает входящие пакеты и обрабатывает команды.</li>
             <li>Позиции рассылются по таймеру <code>broadcastInterval</code> (33 мс, 30 Гц).</li>
-            <li>Периодически сохраняются аккаунты и «грязные» чанки карты/объектов.</li>
+            <li>Периодически сохраняются аккаунты и грязные чанки карты/объектов/ресурсов.</li>
           </ul>
           <p>Рассылка идет только активным игрокам (окно активности 10 секунд).</p>
         </div>
@@ -240,7 +242,9 @@ id|name|x|y|appearance
 CHUNK|cx|cy|lastVersion
 EDIT|{...}
 OBJECTS|cx|cy|lastVersion
-OBJECT_EDIT|{...}</code></pre>
+OBJECT_EDIT|{...}
+RESOURCES|cx|cy|lastVersion
+RESOURCE_EDIT|{...}</code></pre>
           <ul>
             <li><strong>appearance</strong> - base64 JSON с внешностью (может отсутствовать).</li>
             <li><strong>id|name|x|y|appearance</strong> - позиционный пакет, рассылается всем.</li>
@@ -312,11 +316,58 @@ OBJECT_EDIT|{...}</code></pre>
       </section>
 
       <section class="section">
+        <h2>Ресурсы</h2>
+        <div class="card">
+          <ul>
+            <li>Каталог типов ресурсов: <code>resource_types.json</code> (typeId, maxAmount, drops, gatherTool).</li>
+            <li><code>RESOURCES|cx|cy|lastVersion</code> возвращает ресурсы чанка по версии.</li>
+            <li><code>RESOURCE_EDIT</code> применяет изменения и повышает версию чанка ресурсов.</li>
+            <li>Удаление ресурса: <code>typeId="__remove__"</code>.</li>
+          </ul>
+          <pre><code>// resources_0_0.json
+{
+  "x": 0,
+  "y": 0,
+  "version": 3,
+  "resources": [
+    { "entityId": "...", "typeId": "tree_oak", "x": 150, "y": 210, "amount": 8 }
+  ]
+}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Настройка типов ресурсов</h2>
+        <div class="card">
+          <p>Файл <code>resource_types.json</code> описывает масштабируемые характеристики ресурсов. Сервер использует только игровые поля, визуальные параметры игнорируются.</p>
+          <pre><code>{
+  "types": [
+    {
+      "typeId": "tree_oak",
+      "displayName": "Oak Tree",
+      "maxAmount": 8,
+      "gatherTool": "axe",
+      "drops": [
+        { "itemId": "wood_log", "min": 2, "max": 4 }
+      ]
+    }
+  ]
+}</code></pre>
+          <ul>
+            <li><strong>typeId</strong> - уникальный id типа.</li>
+            <li><strong>maxAmount</strong> - количество ресурса в узле при создании.</li>
+            <li><strong>gatherTool</strong> - чем добывать (например, <code>axe</code>).</li>
+            <li><strong>drops</strong> - список лута с диапазоном выпадения (min/max).</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
         <h2>Сохранение и атомарные записи</h2>
         <div class="card">
           <ul>
             <li>Игроки и аккаунты пишутся на диск периодически и при завершении.</li>
-            <li>Чанки карты и объектов сохраняются только при <code>IsDirty=true</code>.</li>
+            <li>Чанки карты, объектов и ресурсов сохраняются только при <code>IsDirty=true</code>.</li>
             <li>Запись в JSON выполняется атомарно через временный файл.</li>
           </ul>
         </div>

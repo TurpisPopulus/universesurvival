@@ -5,6 +5,7 @@ extends Node2D
 @onready var admin_menu: Control = get_node_or_null("Ui/AdminMenu")
 @onready var admin_map_editor_button: Button = get_node_or_null("Ui/AdminMenu/AdminVBox/AdminMapEditorButton")
 @onready var admin_object_editor_button: Button = get_node_or_null("Ui/AdminMenu/AdminVBox/AdminObjectEditorButton")
+@onready var admin_resource_editor_button: Button = get_node_or_null("Ui/AdminMenu/AdminVBox/AdminResourceEditorButton")
 @onready var admin_back_button: Button = get_node_or_null("Ui/AdminMenu/AdminVBox/AdminBackButton")
 @onready var map_editor_panel: Control = get_node_or_null("Ui/MapEditorPanel")
 @onready var map_editor_save_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorVBox/MapEditorActions/MapEditorSaveButton")
@@ -16,8 +17,14 @@ extends Node2D
 @onready var object_editor_delete_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions/ObjectEditorDeleteButton")
 @onready var object_editor_back_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions/ObjectEditorBackButton")
 @onready var object_palette: Node = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectPalette")
+@onready var resource_editor_panel: Control = get_node_or_null("Ui/ResourceEditorPanel")
+@onready var resource_editor_save_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions/ResourceEditorSaveButton")
+@onready var resource_editor_delete_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions/ResourceEditorDeleteButton")
+@onready var resource_editor_back_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions/ResourceEditorBackButton")
+@onready var resource_palette: Node = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorVBox/ResourcePalette")
 @onready var world_map: Node = get_node_or_null("WorldMap")
 @onready var world_objects: Node = get_node_or_null("WorldObjects")
+@onready var world_resources: Node = get_node_or_null("WorldResources")
 @onready var player: Node = get_node_or_null("Player")
 @onready var pause_overlay: Control = get_node_or_null("Ui/PauseOverlay")
 @onready var pause_resume_button: Button = get_node_or_null("Ui/PauseOverlay/PauseCenter/PausePanel/PauseMargin/PauseVBox/ResumeButton")
@@ -42,10 +49,13 @@ const SERVER_CONFIRM_TIMEOUT_SEC := 5.0
 var _loading_start_ms := 0
 var _map_loaded := false
 var _objects_loaded := false
+var _resources_loaded := false
 var _map_loaded_count := 0
 var _map_total_count := 0
 var _objects_loaded_count := 0
 var _objects_total_count := 0
+var _resources_loaded_count := 0
+var _resources_total_count := 0
 var _loading_finish_requested := false
 var _server_confirmed := false
 var _resolution_options: Array[Vector2i] = []
@@ -63,12 +73,16 @@ func _ready() -> void:
 		admin_map_editor_button.pressed.connect(_on_admin_map_editor_pressed)
 	if admin_object_editor_button != null:
 		admin_object_editor_button.pressed.connect(_on_admin_object_editor_pressed)
+	if admin_resource_editor_button != null:
+		admin_resource_editor_button.pressed.connect(_on_admin_resource_editor_pressed)
 	if admin_back_button != null:
 		admin_back_button.pressed.connect(_on_admin_back_pressed)
 	if map_editor_panel != null:
 		map_editor_panel.visible = false
 	if object_editor_panel != null:
 		object_editor_panel.visible = false
+	if resource_editor_panel != null:
+		resource_editor_panel.visible = false
 	if map_editor_save_button != null:
 		map_editor_save_button.pressed.connect(_on_map_editor_save_pressed)
 	if map_editor_delete_button != null:
@@ -85,6 +99,14 @@ func _ready() -> void:
 		object_editor_back_button.pressed.connect(_on_object_editor_back_pressed)
 	if object_palette != null and object_palette.has_signal("object_selected"):
 		object_palette.connect("object_selected", Callable(self, "_on_object_selected"))
+	if resource_editor_save_button != null:
+		resource_editor_save_button.pressed.connect(_on_resource_editor_save_pressed)
+	if resource_editor_delete_button != null:
+		resource_editor_delete_button.pressed.connect(_on_resource_editor_delete_pressed)
+	if resource_editor_back_button != null:
+		resource_editor_back_button.pressed.connect(_on_resource_editor_back_pressed)
+	if resource_palette != null and resource_palette.has_signal("resource_selected"):
+		resource_palette.connect("resource_selected", Callable(self, "_on_resource_selected"))
 	if pause_overlay != null:
 		pause_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 		pause_overlay.visible = false
@@ -111,6 +133,7 @@ func _ready() -> void:
 	_setup_video_settings()
 	_on_tile_selected(0)
 	_on_object_selected("wall_wood", 0)
+	_on_resource_selected("tree_oak")
 	_setup_loading_overlay()
 	_bind_loading_signals()
 	_set_loading_active(true)
@@ -145,10 +168,14 @@ func _on_admin_map_editor_pressed() -> void:
 		map_editor_panel.visible = true
 	if object_editor_panel != null:
 		object_editor_panel.visible = false
+	if resource_editor_panel != null:
+		resource_editor_panel.visible = false
 	if world_map != null and world_map.has_method("set_editor_mode"):
 		world_map.set_editor_mode(true)
 	if world_objects != null and world_objects.has_method("set_editor_mode"):
 		world_objects.set_editor_mode(false)
+	if world_resources != null and world_resources.has_method("set_editor_mode"):
+		world_resources.set_editor_mode(false)
 
 func _on_admin_object_editor_pressed() -> void:
 	if admin_menu != null:
@@ -157,10 +184,30 @@ func _on_admin_object_editor_pressed() -> void:
 		object_editor_panel.visible = true
 	if map_editor_panel != null:
 		map_editor_panel.visible = false
+	if resource_editor_panel != null:
+		resource_editor_panel.visible = false
 	if world_map != null and world_map.has_method("set_editor_mode"):
 		world_map.set_editor_mode(false)
 	if world_objects != null and world_objects.has_method("set_editor_mode"):
 		world_objects.set_editor_mode(true)
+	if world_resources != null and world_resources.has_method("set_editor_mode"):
+		world_resources.set_editor_mode(false)
+
+func _on_admin_resource_editor_pressed() -> void:
+	if admin_menu != null:
+		admin_menu.visible = false
+	if resource_editor_panel != null:
+		resource_editor_panel.visible = true
+	if map_editor_panel != null:
+		map_editor_panel.visible = false
+	if object_editor_panel != null:
+		object_editor_panel.visible = false
+	if world_map != null and world_map.has_method("set_editor_mode"):
+		world_map.set_editor_mode(false)
+	if world_objects != null and world_objects.has_method("set_editor_mode"):
+		world_objects.set_editor_mode(false)
+	if world_resources != null and world_resources.has_method("set_editor_mode"):
+		world_resources.set_editor_mode(true)
 
 func _on_map_editor_back_pressed() -> void:
 	if map_editor_panel != null:
@@ -173,6 +220,8 @@ func _on_map_editor_back_pressed() -> void:
 		world_map.set_editor_mode(false)
 	if world_objects != null and world_objects.has_method("set_editor_mode"):
 		world_objects.set_editor_mode(false)
+	if world_resources != null and world_resources.has_method("set_editor_mode"):
+		world_resources.set_editor_mode(false)
 
 func _on_map_editor_save_pressed() -> void:
 	if world_map != null and world_map.has_method("save_map_changes"):
@@ -195,6 +244,8 @@ func _on_object_editor_back_pressed() -> void:
 		world_objects.discard_object_changes()
 	if world_objects != null and world_objects.has_method("set_editor_mode"):
 		world_objects.set_editor_mode(false)
+	if world_resources != null and world_resources.has_method("set_editor_mode"):
+		world_resources.set_editor_mode(false)
 
 func _on_object_editor_save_pressed() -> void:
 	if world_objects != null and world_objects.has_method("save_object_changes"):
@@ -207,6 +258,28 @@ func _on_object_editor_delete_pressed() -> void:
 func _on_object_selected(type_id: String, rotation: int) -> void:
 	if world_objects != null and world_objects.has_method("set_selected_object"):
 		world_objects.set_selected_object(type_id, rotation)
+
+func _on_resource_editor_back_pressed() -> void:
+	if resource_editor_panel != null:
+		resource_editor_panel.visible = false
+	if admin_menu != null:
+		admin_menu.visible = true
+	if world_resources != null and world_resources.has_method("discard_resource_changes"):
+		world_resources.discard_resource_changes()
+	if world_resources != null and world_resources.has_method("set_editor_mode"):
+		world_resources.set_editor_mode(false)
+
+func _on_resource_editor_save_pressed() -> void:
+	if world_resources != null and world_resources.has_method("save_resource_changes"):
+		world_resources.save_resource_changes()
+
+func _on_resource_editor_delete_pressed() -> void:
+	if world_resources != null and world_resources.has_method("set_selected_resource"):
+		world_resources.set_selected_resource("__remove__")
+
+func _on_resource_selected(type_id: String) -> void:
+	if world_resources != null and world_resources.has_method("set_selected_resource"):
+		world_resources.set_selected_resource(type_id)
 
 func _on_pause_resume_pressed() -> void:
 	_set_pause_menu_visible(false)
@@ -374,6 +447,11 @@ func _bind_loading_signals() -> void:
 			world_objects.connect("initial_load_progress", Callable(self, "_on_objects_load_progress"))
 		if world_objects.has_signal("initial_load_completed"):
 			world_objects.connect("initial_load_completed", Callable(self, "_on_objects_load_completed"))
+	if world_resources != null:
+		if world_resources.has_signal("initial_load_progress"):
+			world_resources.connect("initial_load_progress", Callable(self, "_on_resources_load_progress"))
+		if world_resources.has_signal("initial_load_completed"):
+			world_resources.connect("initial_load_completed", Callable(self, "_on_resources_load_completed"))
 	if player != null and player.has_signal("server_confirmed"):
 		player.connect("server_confirmed", Callable(self, "_on_server_confirmed"))
 	_update_loading_progress()
@@ -394,6 +472,11 @@ func _on_objects_load_progress(loaded: int, total: int) -> void:
 	_objects_total_count = total
 	_update_loading_progress()
 
+func _on_resources_load_progress(loaded: int, total: int) -> void:
+	_resources_loaded_count = loaded
+	_resources_total_count = total
+	_update_loading_progress()
+
 func _on_map_load_completed() -> void:
 	_map_loaded = true
 	_map_loaded_count = _map_total_count
@@ -403,6 +486,12 @@ func _on_map_load_completed() -> void:
 func _on_objects_load_completed() -> void:
 	_objects_loaded = true
 	_objects_loaded_count = _objects_total_count
+	_update_loading_progress()
+	_try_finish_loading()
+
+func _on_resources_load_completed() -> void:
+	_resources_loaded = true
+	_resources_loaded_count = _resources_total_count
 	_update_loading_progress()
 	_try_finish_loading()
 
@@ -417,6 +506,9 @@ func _update_loading_progress() -> void:
 	if _objects_total_count > 0:
 		total_ratio += float(_objects_loaded_count) / float(_objects_total_count)
 		segments += 1
+	if _resources_total_count > 0:
+		total_ratio += float(_resources_loaded_count) / float(_resources_total_count)
+		segments += 1
 	if segments == 0:
 		loading_progress.value = 0.0
 		return
@@ -426,7 +518,7 @@ func _update_loading_progress() -> void:
 func _try_finish_loading() -> void:
 	if _loading_finish_requested:
 		return
-	if not _map_loaded or not _objects_loaded:
+	if not _map_loaded or not _objects_loaded or not _resources_loaded:
 		return
 	_loading_finish_requested = true
 	var elapsed := (Time.get_ticks_msec() - _loading_start_ms) / 1000.0

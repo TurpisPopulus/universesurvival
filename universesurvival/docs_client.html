@@ -212,10 +212,13 @@
   CharacterAppearance.gd
   WorldMap.gd
   WorldObjects.gd
+  WorldResources.gd
   TilePalette.gd
   ObjectPalette.gd
+  ResourcePalette.gd
   data/
     object_types.json
+    resource_types.json
   ui/
     main_menu_bg.png
     loading_screen.png
@@ -223,6 +226,8 @@
     terrain.png
     objects.png
     objects_palette.png
+    resources_trees.png
+    resources_palette.png
   characters/
     body_*.png
     heads.png
@@ -264,7 +269,7 @@
         <h2>Игровая сцена (main.tscn)</h2>
         <div class="card">
           <ul>
-            <li><code>WorldMap</code> и <code>WorldObjects</code> отображают карту и объекты (TileMap).</li>
+            <li><code>WorldMap</code>, <code>WorldObjects</code> и <code>WorldResources</code> отображают карту, объекты и ресурсы.</li>
             <li><code>Player</code> отвечает за движение и отправку позиционных пакетов.</li>
             <li><code>Ui</code> содержит админское меню и панели редакторов.</li>
             <li><code>LoadingOverlay</code> показывает загрузочный экран до полной синхронизации.</li>
@@ -284,7 +289,9 @@ id|name|x|y|appearance
 CHUNK|cx|cy|lastVersion
 EDIT|{...}
 OBJECTS|cx|cy|lastVersion
-OBJECT_EDIT|{...}</code></pre>
+OBJECT_EDIT|{...}
+RESOURCES|cx|cy|lastVersion
+RESOURCE_EDIT|{...}</code></pre>
           <ul>
             <li><strong>appearance</strong> - base64 JSON с внешностью, передается при регистрации/входе и в позиционных пакетах.</li>
             <li><strong>CHUNK</strong> и <strong>OBJECTS</strong> возвращают JSON-снимки только при изменении версии.</li>
@@ -305,13 +312,51 @@ OBJECT_EDIT|{...}</code></pre>
       </section>
 
       <section class="section">
-        <h2>Редакторы карты и объектов</h2>
+        <h2>Редакторы карты, объектов и ресурсов</h2>
         <div class="card">
           <ul>
             <li>Админская кнопка открывает меню редакторов внутри игры.</li>
             <li>Редактор карты использует <code>TilePalette.gd</code>, отправляет <code>EDIT</code> при сохранении.</li>
             <li>Редактор объектов использует <code>ObjectPalette.gd</code>, отправляет <code>OBJECT_EDIT</code>.</li>
+            <li>Редактор ресурсов использует <code>ResourcePalette.gd</code>, отправляет <code>RESOURCE_EDIT</code>.</li>
             <li>Локальные правки накапливаются и отправляются одной пачкой.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Ресурсы: дерево и масштабирование</h2>
+        <div class="card">
+          <p>Ресурсы отображаются в <code>WorldResources.gd</code> как отдельный TileMap-слой и синхронизируются через <code>RESOURCES</code>/<code>RESOURCE_EDIT</code>.</p>
+          <ul>
+            <li>Ресурс состоит из набора тайлов с оффсетами относительно базовой точки.</li>
+            <li>Коллизия задается на уровне тайла: ствол блокирует проход, листва нет.</li>
+            <li>Редактор ресурсов размещает ресурс по базовой клетке (обычно ствол).</li>
+          </ul>
+          <p>Структура <code>data/resource_types.json</code> масштабируется под любые ресурсы:</p>
+          <pre><code>{
+  "types": [
+    {
+      "typeId": "tree_oak",
+      "displayName": "Oak Tree",
+      "maxAmount": 8,
+      "gatherTool": "axe",
+      "drops": [
+        { "itemId": "wood_log", "min": 2, "max": 4 }
+      ],
+      "texture": "res://tiles/resources_trees.png",
+      "palette": [0, 0],
+      "tiles": [
+        { "atlas": [0, 1], "offset": [0, 0], "blocking": true },
+        { "atlas": [0, 0], "offset": [0, -1], "blocking": false }
+      ]
+    }
+  ]
+}</code></pre>
+          <ul>
+            <li><strong>tiles</strong> - список тайлов ресурса; каждый тайл имеет atlas-координаты и offset.</li>
+            <li><strong>blocking</strong> - задает коллизию только для нужных частей (например, ствол).</li>
+            <li><strong>palette</strong> - координаты иконки ресурса в палитре редактора.</li>
           </ul>
         </div>
       </section>
