@@ -1,0 +1,49 @@
+{
+  "types": [
+    {
+      "typeId": "wall_wood",
+      "displayName": "Wood Wall",
+      "isBlocking": true
+    },
+    {
+      "typeId": "wall_stone",
+      "displayName": "Stone Wall",
+      "isBlocking": true
+    },
+    {
+      "typeId": "barrel",
+      "displayName": "Barrel",
+      "isBlocking": true
+    },
+    {
+      "typeId": "crate",
+      "displayName": "Crate",
+      "isBlocking": true
+    },
+    {
+      "typeId": "planks",
+      "displayName": "Planks",
+      "isBlocking": true
+    },
+    {
+      "typeId": "tile_wood",
+      "displayName": "Wood Tile",
+      "isBlocking": false
+    },
+    {
+      "typeId": "tree",
+      "displayName": "Tree",
+      "isBlocking": true
+    },
+    {
+      "typeId": "rock",
+      "displayName": "Rock",
+      "isBlocking": true
+    },
+    {
+      "typeId": "house",
+      "displayName": "House",
+      "isBlocking": true
+    }
+  ]
+}

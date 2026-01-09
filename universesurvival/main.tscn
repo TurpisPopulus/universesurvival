@@ -1,9 +1,11 @@
-[gd_scene load_steps=5 format=3 uid="uid://cgvngah40k2v1"]
+[gd_scene load_steps=7 format=3 uid="uid://cgvngah40k2v1"]
 
 [ext_resource type="PackedScene" uid="uid://dpx63pigio2ff" path="res://player.tscn" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://y07dgnjxwcqju" path="res://WorldMap.gd" id="2_qe77o"]
 [ext_resource type="Script" path="res://Main.gd" id="3_main_script"]
 [ext_resource type="Script" path="res://TilePalette.gd" id="4_tile_palette"]
+[ext_resource type="Script" path="res://WorldObjects.gd" id="5_world_objects"]
+[ext_resource type="Script" path="res://ObjectPalette.gd" id="6_object_palette"]
 
 [node name="Main" type="Node2D"]
 position = Vector2(763, 421)
@@ -12,6 +14,11 @@ script = ExtResource("3_main_script")
 [node name="WorldMap" type="TileMap" parent="."]
 z_index = -1
 script = ExtResource("2_qe77o")
+player_path = NodePath("../Player")
+
+[node name="WorldObjects" type="TileMap" parent="."]
+z_index = 1
+script = ExtResource("5_world_objects")
 player_path = NodePath("../Player")
 
 [node name="Ui" type="CanvasLayer" parent="."]
@@ -40,8 +47,8 @@ theme_override_constants/separation = 6
 [node name="AdminMapEditorButton" type="Button" parent="Ui/AdminMenu/AdminVBox"]
 text = "Редактор карты"
 
-[node name="AdminEmpty1" type="Button" parent="Ui/AdminMenu/AdminVBox"]
-text = "Пусто"
+[node name="AdminObjectEditorButton" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+text = "Размещение объектов"
 
 [node name="AdminEmpty2" type="Button" parent="Ui/AdminMenu/AdminVBox"]
 text = "Пусто"
@@ -93,6 +100,31 @@ text = "Сохранить"
 [node name="MapEditorBackButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
 text = "Назад"
 
+[node name="ObjectEditorPanel" type="PanelContainer" parent="Ui"]
+visible = false
+offset_left = 260.0
+offset_top = 176.0
+offset_right = 520.0
+offset_bottom = 320.0
+
+[node name="ObjectEditorVBox" type="VBoxContainer" parent="Ui/ObjectEditorPanel"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 244.0
+offset_bottom = 136.0
+theme_override_constants/separation = 8
+
+[node name="ObjectPalette" type="TextureRect" parent="Ui/ObjectEditorPanel/ObjectEditorVBox"]
+script = ExtResource("6_object_palette")
+
+[node name="ObjectEditorActions" type="HBoxContainer" parent="Ui/ObjectEditorPanel/ObjectEditorVBox"]
+theme_override_constants/separation = 8
+
+[node name="ObjectEditorSaveButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
+text = "Сохранить"
+
+[node name="ObjectEditorBackButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
+text = "Назад"
+
 [node name="Player" parent="." instance=ExtResource("1_ig7tw")]
 position = Vector2(-189.9254, -91.345856)
-

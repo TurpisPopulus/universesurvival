@@ -194,6 +194,10 @@
         <pre><code>universesurvival/
   main_menu.tscn
   main.tscn
+  WorldMap.gd
+  WorldObjects.gd
+  TilePalette.gd
+  ObjectPalette.gd
   scenes/
     player.tscn
     remote_player.tscn
@@ -248,7 +252,7 @@
           </div>
           <div class="card">
             <h3>Render Layers</h3>
-            <p>Раздельные визуальные слои: terrain, resources, objects, npc.</p>
+            <p>Раздельные визуальные слои: terrain, resources, objects, npc. Объекты рисуются отдельным TileMap <code>WorldObjects</code>.</p>
           </div>
         </div>
       </section>
@@ -262,6 +266,7 @@
 CHUNK|cx|cy|ver -> обновление карты
 RESOURCES|cx|cy|ver -> ресурсы в чанке
 OBJECTS|cx|cy|ver -> объекты в чанке
+OBJECT_EDIT|{...} -> админ размещает объекты
 NPCS|cx|cy|ver -> NPC в чанке</code></pre>
           <p>Клиент обновляет локальную копию только по ответам сервера.</p>
         </div>
@@ -280,6 +285,18 @@ NPCS|cx|cy|ver -> NPC в чанке</code></pre>
       </section>
 
       <section class="section">
+        <h2>Стриминг объектов</h2>
+        <div class="card">
+          <ul>
+            <li>Слой <code>WorldObjects</code> запрашивает <code>OBJECTS|cx|cy|lastVersion</code> по видимому радиусу.</li>
+            <li>Сервер возвращает только изменившиеся чанки объектов по версии.</li>
+            <li>Локально хранится список позиций объектов в чанке, чтобы очищать старые спрайты при обновлении.</li>
+            <li>Pending-изменения повторно накладываются поверх свежего ответа.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
         <h2>Ресурсы, объекты, NPC (отображение)</h2>
         <div class="card">
           <p>Каждый тип сущности имеет свой визуальный контроллер.</p>
@@ -294,6 +311,7 @@ ObjectView
 NpcView
 - анимации состояния
 - индикаторы здоровья</code></pre>
+          <p>Для стен используются отдельные атласы: <code>object_wood_wall.png</code> и <code>object_stone_wall.png</code> (4 направления в ряд). Палитра выбора — <code>objects_palette.png</code>.</p>
           <p>Состояние приходит с сервера и применяется в Registry.</p>
         </div>
       </section>
@@ -335,6 +353,22 @@ NpcView
       </section>
 
       <section class="section">
+        <h2>Админский редактор объектов</h2>
+        <div class="card">
+          <ul>
+            <li>Вход: Admin -> "Размещение объектов" включает режим редактирования для <code>WorldObjects</code>.</li>
+            <li>Выбор объекта через <code>ObjectPalette</code>: строки задаются <code>paletteRow</code>, колонка задает направление (0-3).</li>
+            <li>ЛКМ по карте ставит объект локально, изменения накапливаются в <code>_pending_changes</code>.</li>
+            <li>Кнопка "Сохранить" отправляет пакет <code>OBJECT_EDIT</code> с массивом объектов.</li>
+            <li>Кнопка "Назад" сбрасывает pending и заново запрашивает объекты по чанкам.</li>
+          </ul>
+          <p>Типы объектов описаны в <code>data/object_types.json</code>. Направления совпадают с сервером: 0 = север, 1 = восток, 2 = юг, 3 = запад.</p>
+          <p>Объекты с <code>isBlocking=true</code> получают коллизии и становятся непроходимыми.</p>
+          <p>Кнопка размещения объектов находится под кнопкой редактора карты в админском меню.</p>
+        </div>
+      </section>
+
+      <section class="section">
         <h2>Локальные JSON</h2>
         <div class="card">
           <p>Используются только для:</p>
@@ -342,6 +376,7 @@ NpcView
             <li>настроек клиента (последний адрес сервера, громкость);</li>
             <li>кэша UI (последняя вкладка и т.п.).</li>
           </ul>
+          <p><code>data/object_types.json</code> хранит характеристики типов объектов (текстуры, блокировка, палитра).</p>
           <p>Локальные JSON никогда не меняют состояние мира.</p>
         </div>
       </section>

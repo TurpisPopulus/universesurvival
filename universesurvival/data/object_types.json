@@ -1,0 +1,74 @@
+{
+  "types": [
+    {
+      "typeId": "wall_wood",
+      "displayName": "Wood Wall",
+      "isBlocking": true,
+      "texture": "res://tiles/object_wood_wall.png",
+      "paletteRow": 0
+    },
+    {
+      "typeId": "wall_stone",
+      "displayName": "Stone Wall",
+      "isBlocking": true,
+      "texture": "res://tiles/object_stone_wall.png",
+      "paletteRow": 1
+    },
+    {
+      "typeId": "barrel",
+      "displayName": "Barrel",
+      "isBlocking": true,
+      "texture": "res://tiles/objects.png",
+      "atlas": [0, 0],
+      "paletteRow": -1
+    },
+    {
+      "typeId": "crate",
+      "displayName": "Crate",
+      "isBlocking": true,
+      "texture": "res://tiles/objects.png",
+      "atlas": [1, 0],
+      "paletteRow": -1
+    },
+    {
+      "typeId": "planks",
+      "displayName": "Planks",
+      "isBlocking": true,
+      "texture": "res://tiles/objects.png",
+      "atlas": [2, 0],
+      "paletteRow": -1
+    },
+    {
+      "typeId": "tile_wood",
+      "displayName": "Wood Tile",
+      "isBlocking": false,
+      "texture": "res://tiles/objects.png",
+      "atlas": [3, 0],
+      "paletteRow": -1
+    },
+    {
+      "typeId": "tree",
+      "displayName": "Tree",
+      "isBlocking": true,
+      "texture": "res://tiles/objects.png",
+      "atlas": [4, 0],
+      "paletteRow": -1
+    },
+    {
+      "typeId": "rock",
+      "displayName": "Rock",
+      "isBlocking": true,
+      "texture": "res://tiles/objects.png",
+      "atlas": [5, 0],
+      "paletteRow": -1
+    },
+    {
+      "typeId": "house",
+      "displayName": "House",
+      "isBlocking": true,
+      "texture": "res://tiles/objects.png",
+      "atlas": [5, 1],
+      "paletteRow": -1
+    }
+  ]
+}

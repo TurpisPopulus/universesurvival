@@ -19,9 +19,12 @@ var dataDir = Path.Combine(baseDir, "Data");
 Directory.CreateDirectory(dataDir);
 var playersPath = Path.Combine(dataDir, "players.json");
 var accountsPath = Path.Combine(dataDir, "accounts.json");
+var objectTypesPath = Path.Combine(baseDir, "object_types.json");
 var players = LoadPlayers(playersPath);
 var accounts = LoadAccounts(accountsPath);
+var objectTypes = LoadObjectTypes(objectTypesPath);
 var world = LoadWorld(dataDir);
+var objectWorld = LoadObjectWorld(dataDir);
 var endpoints = new Dictionary<string, IPEndPoint>(StringComparer.Ordinal);
 var activeWindow = TimeSpan.FromSeconds(10);
 var chunkSaveInterval = TimeSpan.FromSeconds(30);
@@ -36,12 +39,14 @@ void SaveAll()
     SavePlayers(playersPath, players, gate);
     SaveAccounts(accountsPath, accounts, gate);
     SaveDirtyChunks(dataDir, world, gate);
+    SaveDirtyObjectChunks(dataDir, objectWorld, gate);
 }
 
 using var udp = new UdpClient(port);
 Console.WriteLine($"UDP server listening on 0.0.0.0:{port}");
 Console.WriteLine("Payload format: id|name|x|y");
 Console.WriteLine($"World loaded: {world.Chunks.Count} chunks");
+Console.WriteLine($"Objects loaded: {objectWorld.Chunks.Count} chunks");
 Console.WriteLine($"[DATA] baseDir   = {baseDir}");
 Console.WriteLine($"[DATA] dataDir   = {dataDir}");
 Console.WriteLine($"[DATA] playersPath = {playersPath}");
@@ -80,6 +85,7 @@ var chunkSaveTask = Task.Run(async () =>
         while (await timer.WaitForNextTickAsync(cts.Token))
         {
             SaveDirtyChunks(dataDir, world, gate);
+            SaveDirtyObjectChunks(dataDir, objectWorld, gate);
         }
     }
     catch (OperationCanceledException)
@@ -208,6 +214,30 @@ while (!cts.IsCancellationRequested)
         continue;
     }
 
+    if (TryParseObjectsRequest(message, out var objectsRequest, out var objectsError))
+    {
+        if (objectsError.Length != 0)
+        {
+            await SendToAsync(udp, "ERR|" + objectsError, result.RemoteEndPoint);
+            continue;
+        }
+
+        string? objectsResponse = null;
+        lock (gate)
+        {
+            var chunk = GetOrCreateObjectChunk(objectWorld, objectsRequest.Cx, objectsRequest.Cy);
+            if (objectsRequest.LastKnownVersion < 0 || chunk.Version > objectsRequest.LastKnownVersion)
+            {
+                objectsResponse = BuildObjectsResponse(chunk);
+            }
+        }
+        if (objectsResponse != null)
+        {
+            await SendToAsync(udp, objectsResponse, result.RemoteEndPoint);
+        }
+        continue;
+    }
+
     if (TryParseEdit(message, out var editPayload, out var editError))
     {
         if (editError.Length != 0)
@@ -223,6 +253,24 @@ while (!cts.IsCancellationRequested)
             appliedCount = ApplyEdits(world, editPayload);
         }
         Console.WriteLine($"[EDIT] applied changes={appliedCount} from {result.RemoteEndPoint}");
+        continue;
+    }
+
+    if (TryParseObjectEdit(message, out var objectEditPayload, out var objectEditError))
+    {
+        if (objectEditError.Length != 0)
+        {
+            Console.WriteLine($"Object edit rejected from {result.RemoteEndPoint}: {objectEditError}");
+            await SendToAsync(udp, "ERR|" + objectEditError, result.RemoteEndPoint);
+            continue;
+        }
+
+        var appliedCount = 0;
+        lock (gate)
+        {
+            appliedCount = ApplyObjectEdits(objectWorld, objectEditPayload, objectTypes);
+        }
+        Console.WriteLine($"[OBJECT_EDIT] applied changes={appliedCount} from {result.RemoteEndPoint}");
         continue;
     }
 
@@ -423,6 +471,35 @@ static bool TryParseChunkRequest(string payload, out ChunkRequest request, out s
     return true;
 }
 
+static bool TryParseObjectsRequest(string payload, out ObjectsRequest request, out string error)
+{
+    request = default;
+    error = string.Empty;
+
+    if (!payload.StartsWith("OBJECTS|", StringComparison.Ordinal))
+    {
+        return false;
+    }
+
+    var parts = payload.Split('|');
+    if (parts.Length < 4)
+    {
+        error = "bad_objects";
+        return true;
+    }
+
+    if (!int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cx) ||
+        !int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cy) ||
+        !int.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var lastKnownVersion))
+    {
+        error = "bad_objects";
+        return true;
+    }
+
+    request = new ObjectsRequest(cx, cy, lastKnownVersion);
+    return true;
+}
+
 static bool TryParseEdit(string payload, out EditPayload update, out string error)
 {
     update = new EditPayload();
@@ -461,6 +538,44 @@ static bool TryParseEdit(string payload, out EditPayload update, out string erro
     return true;
 }
 
+static bool TryParseObjectEdit(string payload, out ObjectEditPayload update, out string error)
+{
+    update = new ObjectEditPayload();
+    error = string.Empty;
+
+    if (!payload.StartsWith("OBJECT_EDIT|", StringComparison.Ordinal))
+    {
+        return false;
+    }
+
+    var json = payload.Substring("OBJECT_EDIT|".Length);
+    if (string.IsNullOrWhiteSpace(json))
+    {
+        error = "bad_object_edit";
+        return true;
+    }
+
+    try
+    {
+        update = JsonSerializer.Deserialize<ObjectEditPayload>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? new ObjectEditPayload();
+    }
+    catch (Exception)
+    {
+        error = "bad_object_edit";
+        return true;
+    }
+
+    if (update.Changes == null || update.Changes.Length == 0)
+    {
+        error = "bad_object_edit";
+    }
+
+    return true;
+}
+
 static int ApplyEdits(World world, EditPayload update)
 {
     if (update.Changes == null || update.Changes.Length == 0)
@@ -482,6 +597,62 @@ static int ApplyEdits(World world, EditPayload update)
 
         var chunk = GetOrCreateChunk(world, cx, cy);
         chunk.SetTile(localX, localY, change.Tile);
+        chunk.Version++;
+        chunk.IsDirty = true;
+        applied++;
+    }
+
+    return applied;
+}
+
+static int ApplyObjectEdits(ObjectWorld world, ObjectEditPayload update, Dictionary<string, ObjectType> objectTypes)
+{
+    if (update.Changes == null || update.Changes.Length == 0)
+    {
+        return 0;
+    }
+
+    var applied = 0;
+    foreach (var change in update.Changes)
+    {
+        if (string.IsNullOrWhiteSpace(change.TypeId))
+        {
+            continue;
+        }
+
+        if (!objectTypes.TryGetValue(change.TypeId, out var type))
+        {
+            continue;
+        }
+
+        var rotation = Math.Clamp(change.Rotation, 0, 3);
+        var cx = FloorDiv(change.X, Chunk.ChunkSize);
+        var cy = FloorDiv(change.Y, Chunk.ChunkSize);
+
+        var chunk = GetOrCreateObjectChunk(world, cx, cy);
+        var existing = chunk.Objects.FirstOrDefault(obj => obj.X == change.X && obj.Y == change.Y);
+        if (existing != null)
+        {
+            existing.TypeId = change.TypeId;
+            existing.Rotation = rotation;
+            existing.IsBlocking = type.IsBlocking;
+            existing.UpdatedUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            chunk.Objects.Add(new ObjectEntry
+            {
+                EntityId = Guid.NewGuid().ToString("N"),
+                TypeId = change.TypeId,
+                X = change.X,
+                Y = change.Y,
+                Rotation = rotation,
+                IsBlocking = type.IsBlocking,
+                CreatedUtc = DateTime.UtcNow,
+                UpdatedUtc = DateTime.UtcNow
+            });
+        }
+
         chunk.Version++;
         chunk.IsDirty = true;
         applied++;
@@ -592,6 +763,22 @@ static string BuildChunkResponse(Chunk chunk)
     });
 }
 
+static string BuildObjectsResponse(ObjectChunk chunk)
+{
+    var payload = new ObjectChunkPayload
+    {
+        X = chunk.X,
+        Y = chunk.Y,
+        Version = chunk.Version,
+        Objects = chunk.Objects
+    };
+
+    return JsonSerializer.Serialize(payload, new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    });
+}
+
 static Dictionary<string, PlayerState> LoadPlayers(string path)
 {
     try
@@ -661,6 +848,84 @@ static World LoadWorld(string dataDir)
     return new World(chunks);
 }
 
+static Dictionary<string, ObjectType> LoadObjectTypes(string path)
+{
+    try
+    {
+        if (!File.Exists(path))
+        {
+            var defaults = new ObjectTypeCatalog
+            {
+                Types = new List<ObjectType>
+                {
+                    new()
+                    {
+                        TypeId = "wall_wood",
+                        DisplayName = "Wood Wall",
+                        IsBlocking = true
+                    },
+                    new()
+                    {
+                        TypeId = "wall_stone",
+                        DisplayName = "Stone Wall",
+                        IsBlocking = true
+                    }
+                }
+            };
+            var json = JsonSerializer.Serialize(defaults, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            WriteAllTextAtomic(path, json);
+            return defaults.Types.ToDictionary(item => item.TypeId, StringComparer.OrdinalIgnoreCase);
+        }
+
+        var text = File.ReadAllText(path, Encoding.UTF8);
+        var catalog = JsonSerializer.Deserialize<ObjectTypeCatalog>(text, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        if (catalog?.Types == null)
+        {
+            return new Dictionary<string, ObjectType>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return catalog.Types
+            .Where(item => !string.IsNullOrWhiteSpace(item.TypeId))
+            .ToDictionary(item => item.TypeId, StringComparer.OrdinalIgnoreCase);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Object types load error: {ex.Message}");
+        return new Dictionary<string, ObjectType>(StringComparer.OrdinalIgnoreCase);
+    }
+}
+
+static ObjectWorld LoadObjectWorld(string dataDir)
+{
+    var chunks = new Dictionary<ChunkId, ObjectChunk>();
+    try
+    {
+        foreach (var path in Directory.EnumerateFiles(dataDir, "objects_*.json"))
+        {
+            var chunk = LoadObjectChunk(path);
+            if (chunk == null)
+            {
+                continue;
+            }
+
+            var id = new ChunkId(chunk.X, chunk.Y);
+            chunks[id] = chunk;
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Object world load error: {ex.Message}");
+    }
+
+    return new ObjectWorld(chunks);
+}
+
 static Chunk? LoadChunk(string path)
 {
     try
@@ -691,6 +956,31 @@ static Chunk? LoadChunk(string path)
     catch (Exception ex)
     {
         Console.WriteLine($"Chunk load error ({Path.GetFileName(path)}): {ex.Message}");
+        return null;
+    }
+}
+
+static ObjectChunk? LoadObjectChunk(string path)
+{
+    try
+    {
+        var json = File.ReadAllText(path, Encoding.UTF8);
+        var chunk = JsonSerializer.Deserialize<ObjectChunk>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        if (chunk == null)
+        {
+            return null;
+        }
+
+        chunk.Objects ??= new List<ObjectEntry>();
+        chunk.IsDirty = false;
+        return chunk;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Object chunk load error ({Path.GetFileName(path)}): {ex.Message}");
         return null;
     }
 }
@@ -727,6 +1017,42 @@ static void SaveDirtyChunks(string dataDir, World world, object gate)
         catch (Exception ex)
         {
             Console.WriteLine($"Chunk save error ({chunk.X},{chunk.Y}): {ex.Message}");
+        }
+    }
+}
+
+static void SaveDirtyObjectChunks(string dataDir, ObjectWorld world, object gate)
+{
+    List<(ObjectChunk chunk, int version)> dirty;
+    lock (gate)
+    {
+        dirty = world.Chunks.Values
+            .Where(chunk => chunk.IsDirty)
+            .Select(chunk => (chunk, chunk.Version))
+            .ToList();
+    }
+
+    foreach (var (chunk, version) in dirty)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(chunk, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            var path = Path.Combine(dataDir, $"objects_{chunk.X}_{chunk.Y}.json");
+            WriteAllTextAtomic(path, json);
+            lock (gate)
+            {
+                if (chunk.Version == version)
+                {
+                    chunk.IsDirty = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Object chunk save error ({chunk.X},{chunk.Y}): {ex.Message}");
         }
     }
 }
@@ -917,6 +1243,23 @@ static Chunk GetOrCreateChunk(World world, int cx, int cy)
     return chunk;
 }
 
+static ObjectChunk GetOrCreateObjectChunk(ObjectWorld world, int cx, int cy)
+{
+    var id = new ChunkId(cx, cy);
+    if (world.Chunks.TryGetValue(id, out var chunk))
+    {
+        return chunk;
+    }
+
+    chunk = new ObjectChunk
+    {
+        X = cx,
+        Y = cy
+    };
+    world.Chunks[id] = chunk;
+    return chunk;
+}
+
 static int FloorDiv(int value, int size)
 {
     if (size <= 0)
@@ -934,6 +1277,7 @@ static int FloorDiv(int value, int size)
 
 readonly record struct PlayerPacket(string Id, string Name, float X, float Y);
 readonly record struct ChunkRequest(int Cx, int Cy, int LastKnownVersion);
+readonly record struct ObjectsRequest(int Cx, int Cy, int LastKnownVersion);
 readonly record struct ChunkId(int X, int Y);
 
 sealed record PlayerState(string Id, string Name, float X, float Y, DateTime LastSeenUtc);
@@ -952,6 +1296,11 @@ sealed class EditPayload
     public TileChange[] Changes { get; set; } = Array.Empty<TileChange>();
 }
 
+sealed class ObjectEditPayload
+{
+    public ObjectChange[] Changes { get; set; } = Array.Empty<ObjectChange>();
+}
+
 sealed class TileChange
 {
     public int X { get; set; }
@@ -959,11 +1308,29 @@ sealed class TileChange
     public int Tile { get; set; }
 }
 
+sealed class ObjectChange
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public string TypeId { get; set; } = string.Empty;
+    public int Rotation { get; set; }
+}
+
 sealed class World
 {
     public Dictionary<ChunkId, Chunk> Chunks { get; }
 
     public World(Dictionary<ChunkId, Chunk> chunks)
+    {
+        Chunks = chunks;
+    }
+}
+
+sealed class ObjectWorld
+{
+    public Dictionary<ChunkId, ObjectChunk> Chunks { get; }
+
+    public ObjectWorld(Dictionary<ChunkId, ObjectChunk> chunks)
     {
         Chunks = chunks;
     }
@@ -1013,6 +1380,49 @@ sealed class Chunk
 
         Tiles[index] = value;
     }
+}
+
+sealed class ObjectChunkPayload
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Version { get; set; }
+    public List<ObjectEntry> Objects { get; set; } = new();
+}
+
+sealed class ObjectChunk
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Version { get; set; }
+    public List<ObjectEntry> Objects { get; set; } = new();
+
+    [JsonIgnore]
+    public bool IsDirty { get; set; }
+}
+
+sealed class ObjectEntry
+{
+    public string EntityId { get; set; } = string.Empty;
+    public string TypeId { get; set; } = string.Empty;
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Rotation { get; set; }
+    public bool IsBlocking { get; set; }
+    public DateTime CreatedUtc { get; set; }
+    public DateTime UpdatedUtc { get; set; }
+}
+
+sealed class ObjectType
+{
+    public string TypeId { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public bool IsBlocking { get; init; }
+}
+
+sealed class ObjectTypeCatalog
+{
+    public List<ObjectType> Types { get; set; } = new();
 }
 
 sealed class Account
