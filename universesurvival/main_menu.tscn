@@ -36,7 +36,7 @@ anchor_bottom = 1.0
 visible = false
 
 [node name="CreatePanel" type="PanelContainer" parent="CreateOverlay"]
-custom_minimum_size = Vector2(360, 0)
+custom_minimum_size = Vector2(520, 0)
 
 [node name="CreateVBox" type="VBoxContainer" parent="CreateOverlay/CreatePanel"]
 
@@ -54,6 +54,152 @@ secret = true
 [node name="ConfirmInput" type="LineEdit" parent="CreateOverlay/CreatePanel/CreateVBox"]
 placeholder_text = "Confirm Password"
 secret = true
+
+[node name="AppearanceRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox"]
+size_flags_horizontal = 3
+
+[node name="AppearanceControls" type="VBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow"]
+size_flags_horizontal = 3
+
+[node name="AppearanceTitle" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+text = "Appearance"
+
+[node name="GenderRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+
+[node name="GenderLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/GenderRow"]
+text = "Gender"
+
+[node name="GenderOption" type="OptionButton" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/GenderRow"]
+size_flags_horizontal = 3
+
+[node name="BodyRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+
+[node name="BodyLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/BodyRow"]
+text = "Body"
+
+[node name="BodySpin" type="SpinBox" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/BodyRow"]
+min_value = 1.0
+max_value = 3.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="HeadRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+
+[node name="HeadLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/HeadRow"]
+text = "Head"
+
+[node name="HeadSpin" type="SpinBox" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/HeadRow"]
+min_value = 1.0
+max_value = 20.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="HairRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+
+[node name="HairLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/HairRow"]
+text = "Hair"
+
+[node name="HairSpin" type="SpinBox" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/HairRow"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="EyesRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+
+[node name="EyesLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/EyesRow"]
+text = "Eyes"
+
+[node name="EyesSpin" type="SpinBox" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/EyesRow"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="NoseRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+
+[node name="NoseLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/NoseRow"]
+text = "Nose"
+
+[node name="NoseSpin" type="SpinBox" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/NoseRow"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="MouthRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+
+[node name="MouthLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/MouthRow"]
+text = "Mouth"
+
+[node name="MouthSpin" type="SpinBox" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/MouthRow"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="BeardRow" type="HBoxContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls"]
+
+[node name="BeardLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/BeardRow"]
+text = "Beard"
+
+[node name="BeardSpin" type="SpinBox" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/BeardRow"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="AppearancePreview" type="PanelContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow"]
+custom_minimum_size = Vector2(140, 180)
+
+[node name="PreviewCenter" type="CenterContainer" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="PreviewRoot" type="Control" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter"]
+custom_minimum_size = Vector2(64, 128)
+
+[node name="BodyLayer" type="TextureRect" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch_mode = 0
+
+[node name="HeadLayer" type="TextureRect" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch_mode = 0
+
+[node name="EyesLayer" type="TextureRect" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch_mode = 0
+
+[node name="NoseLayer" type="TextureRect" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch_mode = 0
+
+[node name="MouthLayer" type="TextureRect" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch_mode = 0
+
+[node name="BeardLayer" type="TextureRect" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch_mode = 0
+
+[node name="HairLayer" type="TextureRect" parent="CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch_mode = 0
 
 [node name="StatusLabel" type="Label" parent="CreateOverlay/CreatePanel/CreateVBox"]
 text = ""

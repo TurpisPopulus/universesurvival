@@ -198,6 +198,17 @@
   WorldObjects.gd
   TilePalette.gd
   ObjectPalette.gd
+  characters/
+    body_skinny.png
+    body_normal.png
+    body_fat.png
+    heads.png
+    hair_male.png
+    hair_female.png
+    beards.png
+    eyes.png
+    noses.png
+    mouths.png
   scenes/
     player.tscn
     remote_player.tscn
@@ -226,7 +237,7 @@
         <h2>Сцены и ответственность</h2>
         <div class="card">
           <ul>
-            <li><code>main_menu.tscn</code> — вход, регистрация, статус сервера.</li>
+            <li><code>main_menu.tscn</code> — вход, регистрация, статус сервера, выбор внешности.</li>
             <li><code>main.tscn</code> — игровая сцена, подключение, HUD.</li>
             <li><code>player.tscn</code> — локальный игрок и ввод.</li>
             <li><code>remote_player.tscn</code> — удаленные игроки.</li>
@@ -254,6 +265,35 @@
             <h3>Render Layers</h3>
             <p>Раздельные визуальные слои: terrain, resources, objects, npc. Объекты рисуются отдельным TileMap <code>WorldObjects</code>.</p>
           </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Создание персонажа</h2>
+        <div class="card">
+          <p>Форма Create Player включает выбор внешности и живое превью сборки paperdoll.</p>
+          <ul>
+            <li>Пол: Male / Female (влияет на набор волос).</li>
+            <li>Body: 3 варианта (1-3).</li>
+            <li>Head: 20 форм (1-20).</li>
+            <li>Hair: 10 вариантов (1-10) для мужских и женских атласов.</li>
+            <li>Eyes, Nose, Mouth, Beard: по 10 вариантов (1-10).</li>
+          </ul>
+          <p>Слои превью собираются в порядке: body → head → eyes → nose → mouth → beard → hair.</p>
+          <p>Текущая интеграция влияет на превью в меню; передача внешности на сервер планируется отдельно.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Модульные спрайты персонажа</h2>
+        <div class="card">
+          <p>Все атласы формата 64×128 px, прозрачный фон, pivot: bottom-center. Элементы совпадают по позиции, чтобы любой набор корректно совмещался.</p>
+          <ul>
+            <li>body_skinny.png, body_normal.png, body_fat.png — по одному кадру 64×128.</li>
+            <li>heads.png — 20 кадров (сетка 10×2).</li>
+            <li>hair_male.png, hair_female.png — по 10 кадров (сетка 10×1).</li>
+            <li>beards.png, eyes.png, noses.png, mouths.png — по 10 кадров (сетка 10×1).</li>
+          </ul>
         </div>
       </section>
 

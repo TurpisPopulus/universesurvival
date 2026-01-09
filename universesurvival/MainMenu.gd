@@ -3,6 +3,20 @@
 const SERVER_ADDRESS := "127.0.0.1"
 const SERVER_PORT := 7777
 const REQUEST_TIMEOUT_SEC := 1.5
+const APPEARANCE_TILE_W := 64
+const APPEARANCE_TILE_H := 128
+const BODY_ATLAS_PATHS := [
+	"res://characters/body_skinny.png",
+	"res://characters/body_normal.png",
+	"res://characters/body_fat.png"
+]
+const HEAD_ATLAS_PATH := "res://characters/heads.png"
+const HAIR_MALE_ATLAS_PATH := "res://characters/hair_male.png"
+const HAIR_FEMALE_ATLAS_PATH := "res://characters/hair_female.png"
+const BEARD_ATLAS_PATH := "res://characters/beards.png"
+const EYES_ATLAS_PATH := "res://characters/eyes.png"
+const NOSES_ATLAS_PATH := "res://characters/noses.png"
+const MOUTHS_ATLAS_PATH := "res://characters/mouths.png"
 
 @onready var enter_button: Button = $Center/MenuVBox/EnterButton
 @onready var create_button: Button = $Center/MenuVBox/CreateButton
@@ -18,6 +32,21 @@ const REQUEST_TIMEOUT_SEC := 1.5
 @onready var create_status: Label = $CreateOverlay/CreatePanel/CreateVBox/StatusLabel
 @onready var create_ok: Button = $CreateOverlay/CreatePanel/CreateVBox/Buttons/CreateConfirm
 @onready var create_back: Button = $CreateOverlay/CreatePanel/CreateVBox/Buttons/CreateBack
+@onready var appearance_gender: OptionButton = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/GenderRow/GenderOption
+@onready var appearance_body: SpinBox = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/BodyRow/BodySpin
+@onready var appearance_head: SpinBox = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/HeadRow/HeadSpin
+@onready var appearance_hair: SpinBox = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/HairRow/HairSpin
+@onready var appearance_eyes: SpinBox = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/EyesRow/EyesSpin
+@onready var appearance_nose: SpinBox = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/NoseRow/NoseSpin
+@onready var appearance_mouth: SpinBox = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/MouthRow/MouthSpin
+@onready var appearance_beard: SpinBox = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearanceControls/BeardRow/BeardSpin
+@onready var preview_body: TextureRect = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot/BodyLayer
+@onready var preview_head: TextureRect = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot/HeadLayer
+@onready var preview_eyes: TextureRect = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot/EyesLayer
+@onready var preview_nose: TextureRect = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot/NoseLayer
+@onready var preview_mouth: TextureRect = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot/MouthLayer
+@onready var preview_beard: TextureRect = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot/BeardLayer
+@onready var preview_hair: TextureRect = $CreateOverlay/CreatePanel/CreateVBox/AppearanceRow/AppearancePreview/PreviewCenter/PreviewRoot/HairLayer
 
 @onready var login_overlay: CenterContainer = $LoginOverlay
 @onready var login_name: LineEdit = $LoginOverlay/LoginPanel/LoginVBox/NameInput
@@ -27,6 +56,7 @@ const REQUEST_TIMEOUT_SEC := 1.5
 @onready var login_back: Button = $LoginOverlay/LoginPanel/LoginVBox/Buttons/LoginBack
 
 var _status_check_in_flight := false
+var _appearance_textures := {}
 
 func _ready() -> void:
 	enter_button.pressed.connect(_on_enter_pressed)
@@ -37,6 +67,8 @@ func _ready() -> void:
 	create_back.pressed.connect(_on_create_back_pressed)
 	login_ok.pressed.connect(_on_login_confirm_pressed)
 	login_back.pressed.connect(_on_login_back_pressed)
+
+	_setup_appearance_ui()
 
 	settings_button.disabled = true
 	enter_button.disabled = false
@@ -57,6 +89,15 @@ func _on_create_pressed() -> void:
 	create_name.text = ""
 	create_password.text = ""
 	create_confirm.text = ""
+	appearance_gender.selected = 0
+	appearance_body.value = 1
+	appearance_head.value = 1
+	appearance_hair.value = 1
+	appearance_eyes.value = 1
+	appearance_nose.value = 1
+	appearance_mouth.value = 1
+	appearance_beard.value = 1
+	_update_appearance_preview()
 	create_overlay.visible = true
 
 func _on_settings_pressed() -> void:
@@ -141,6 +182,94 @@ func _refresh_server_status() -> void:
 	else:
 		server_status.text = "Server: offline"
 	_status_check_in_flight = false
+
+func _setup_appearance_ui() -> void:
+	appearance_gender.clear()
+	appearance_gender.add_item("Male", 0)
+	appearance_gender.add_item("Female", 1)
+	appearance_gender.selected = 0
+
+	appearance_gender.item_selected.connect(_on_appearance_changed)
+	appearance_body.value_changed.connect(_on_appearance_changed)
+	appearance_head.value_changed.connect(_on_appearance_changed)
+	appearance_hair.value_changed.connect(_on_appearance_changed)
+	appearance_eyes.value_changed.connect(_on_appearance_changed)
+	appearance_nose.value_changed.connect(_on_appearance_changed)
+	appearance_mouth.value_changed.connect(_on_appearance_changed)
+	appearance_beard.value_changed.connect(_on_appearance_changed)
+
+	_preview_layers_setup()
+	_load_appearance_textures()
+	_update_appearance_preview()
+
+func _preview_layers_setup() -> void:
+	var layers := [preview_body, preview_head, preview_eyes, preview_nose, preview_mouth, preview_beard, preview_hair]
+	for layer in layers:
+		layer.expand_mode = TextureRect.EXPAND_KEEP_SIZE
+		layer.stretch_mode = TextureRect.STRETCH_KEEP
+
+func _load_appearance_textures() -> void:
+	var body_textures: Array[Texture2D] = []
+	for path in BODY_ATLAS_PATHS:
+		var tex := load(path) as Texture2D
+		if tex != null:
+			body_textures.append(tex)
+	_appearance_textures["body"] = body_textures
+	_appearance_textures["head"] = load(HEAD_ATLAS_PATH) as Texture2D
+	_appearance_textures["hair_male"] = load(HAIR_MALE_ATLAS_PATH) as Texture2D
+	_appearance_textures["hair_female"] = load(HAIR_FEMALE_ATLAS_PATH) as Texture2D
+	_appearance_textures["beard"] = load(BEARD_ATLAS_PATH) as Texture2D
+	_appearance_textures["eyes"] = load(EYES_ATLAS_PATH) as Texture2D
+	_appearance_textures["nose"] = load(NOSES_ATLAS_PATH) as Texture2D
+	_appearance_textures["mouth"] = load(MOUTHS_ATLAS_PATH) as Texture2D
+
+func _on_appearance_changed(_value := 0) -> void:
+	_update_appearance_preview()
+
+func _update_appearance_preview() -> void:
+	var body_index := int(appearance_body.value) - 1
+	var head_index := int(appearance_head.value) - 1
+	var hair_index := int(appearance_hair.value) - 1
+	var eyes_index := int(appearance_eyes.value) - 1
+	var nose_index := int(appearance_nose.value) - 1
+	var mouth_index := int(appearance_mouth.value) - 1
+	var beard_index := int(appearance_beard.value) - 1
+
+	var body_textures: Array = _appearance_textures.get("body", [])
+	if body_index >= 0 and body_index < body_textures.size():
+		preview_body.texture = body_textures[body_index]
+
+	var head_tex: Texture2D = _appearance_textures.get("head")
+	preview_head.texture = _atlas_frame(head_tex, head_index, 10)
+
+	var hair_tex: Texture2D = _appearance_textures.get("hair_male")
+	if appearance_gender.selected == 1:
+		hair_tex = _appearance_textures.get("hair_female")
+	preview_hair.texture = _atlas_frame(hair_tex, hair_index, 10)
+
+	var beard_tex: Texture2D = _appearance_textures.get("beard")
+	preview_beard.texture = _atlas_frame(beard_tex, beard_index, 10)
+
+	var eyes_tex: Texture2D = _appearance_textures.get("eyes")
+	preview_eyes.texture = _atlas_frame(eyes_tex, eyes_index, 10)
+
+	var nose_tex: Texture2D = _appearance_textures.get("nose")
+	preview_nose.texture = _atlas_frame(nose_tex, nose_index, 10)
+
+	var mouth_tex: Texture2D = _appearance_textures.get("mouth")
+	preview_mouth.texture = _atlas_frame(mouth_tex, mouth_index, 10)
+
+func _atlas_frame(texture: Texture2D, index: int, columns: int) -> Texture2D:
+	if texture == null:
+		return null
+	if index < 0:
+		index = 0
+	var atlas := AtlasTexture.new()
+	atlas.atlas = texture
+	var col := index % columns
+	var row := int(index / columns)
+	atlas.region = Rect2(col * APPEARANCE_TILE_W, row * APPEARANCE_TILE_H, APPEARANCE_TILE_W, APPEARANCE_TILE_H)
+	return atlas
 
 func _ping_server() -> bool:
 	var reply := await _send_request("PING")

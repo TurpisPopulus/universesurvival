@@ -26,5 +26,12 @@
     "Salt": "TPW2kUTBVuHFhn2nNnz3jw==",
     "Password": "",
     "AccessLevel": 5
+  },
+  {
+    "Name": "test4",
+    "PasswordHash": "maQRvyA5OOLwSZd5WyykhIprPo4jm4wqebliyQ6XU/Q=",
+    "Salt": "PFwVDEsH4xJ4mFgjZsWp4Q==",
+    "Password": "",
+    "AccessLevel": 5
   }
 ]
