@@ -1,14 +1,15 @@
 extends TileMap
 
 const TILE_SIZE = 32
-const CHUNK_SIZE_TILES = 64
+const CHUNK_SIZE_TILES = 100
 const VIEW_DISTANCE_CHUNKS = 2
+const CHUNK_POLL_SECONDS = 0.5
 
 @export var player_path: NodePath = NodePath()
 @export var map_origin_tile: Vector2i = Vector2i(128, 128)
 const TILE_GRASS = Vector2i(0, 0)
 const TILE_DIRT = Vector2i(1, 0)
-const MAP_UPDATE_PREFIX = "MAPUPDATE|"
+const EDIT_PREFIX = "EDIT|"
 
 @export var server_address: String = "127.0.0.1"
 @export var server_port: int = 7777
@@ -17,11 +18,12 @@ var _player
 var _loaded_chunks = {}
 var _source_id = -1
 var _last_player_chunk = Vector2i(2147483647, 2147483647)
-var _loading_chunks = {}
 var _udp = PacketPeerUDP.new()
 var _edit_mode = false
 var _selected_tile_id = 0
 var _pending_changes: Dictionary = {}
+var _chunk_versions: Dictionary = {}
+var _poll_accum := 0.0
 
 var _tile_atlas: Dictionary = {}
 
@@ -35,13 +37,17 @@ func _ready() -> void:
 		push_warning("WorldMap: UDP connect failed: %s:%s (err %s)" % [server_address, server_port, err])
 
 	_loaded_chunks.clear()
-	_loading_chunks.clear()
+	_chunk_versions.clear()
 	_setup_tileset()
-	_refresh_chunks(true)
+	_request_visible_chunks(true)
 
 func _process(_delta: float) -> void:
 	_ensure_player()
-	_refresh_chunks(false)
+	_refresh_player_chunk()
+	_poll_accum += _delta
+	if _poll_accum >= CHUNK_POLL_SECONDS:
+		_poll_accum = 0.0
+		_request_visible_chunks(false)
 	_poll_chunk_responses()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -78,21 +84,26 @@ func _setup_tileset() -> void:
 
 	tile_set = tileset
 
-func _refresh_chunks(force: bool) -> void:
+func _refresh_player_chunk() -> void:
 	if _player == null:
 		return
 	var player_chunk = _world_to_chunk(_player.global_position)
-	if not force and player_chunk == _last_player_chunk:
+	if player_chunk == _last_player_chunk:
 		return
 	_last_player_chunk = player_chunk
+	_request_visible_chunks(true)
+
+func _request_visible_chunks(force: bool) -> void:
+	if _player == null:
+		return
+	var player_chunk = _world_to_chunk(_player.global_position)
 	var needed = {}
 
 	for cy in range(player_chunk.y - VIEW_DISTANCE_CHUNKS, player_chunk.y + VIEW_DISTANCE_CHUNKS + 1):
 		for cx in range(player_chunk.x - VIEW_DISTANCE_CHUNKS, player_chunk.x + VIEW_DISTANCE_CHUNKS + 1):
 			var chunk = Vector2i(cx, cy)
 			needed[chunk] = true
-			if force or not _loaded_chunks.has(chunk):
-				_load_chunk(chunk)
+			_request_chunk(chunk)
 
 	var to_unload = []
 	for chunk in _loaded_chunks.keys():
@@ -101,17 +112,15 @@ func _refresh_chunks(force: bool) -> void:
 	for chunk in to_unload:
 		_unload_chunk(chunk)
 
-func _load_chunk(chunk: Vector2i) -> void:
+func _request_chunk(chunk: Vector2i) -> void:
 	if _source_id == -1:
 		return
-	if _loading_chunks.has(chunk):
-		return
-	var payload = "CHUNK|%s|%s" % [chunk.x, chunk.y]
+	var last_version = int(_chunk_versions.get(chunk, -1))
+	var payload = "CHUNK|%s|%s|%s" % [chunk.x, chunk.y, last_version]
 	var err = _udp.put_packet(payload.to_utf8_buffer())
 	if err != OK:
 		push_warning("WorldMap: failed to request chunk %s (err %s)" % [chunk, err])
 		return
-	_loading_chunks[chunk] = true
 
 func _unload_chunk(chunk: Vector2i) -> void:
 	var start = chunk * CHUNK_SIZE_TILES
@@ -120,6 +129,7 @@ func _unload_chunk(chunk: Vector2i) -> void:
 			var tile_pos = Vector2i(start.x + x, start.y + y)
 			erase_cell(0, tile_pos)
 	_loaded_chunks.erase(chunk)
+	_chunk_versions.erase(chunk)
 
 func _world_to_chunk(world: Vector2) -> Vector2i:
 	var local_pos = to_local(world)
@@ -134,22 +144,20 @@ func _poll_chunk_responses() -> void:
 			push_warning("WorldMap: UDP receive failed (err %s)" % _udp.get_packet_error())
 			return
 		var text = data.get_string_from_utf8()
-		if text.begins_with(MAP_UPDATE_PREFIX):
-			_apply_map_update(text.substr(MAP_UPDATE_PREFIX.length()))
-			continue
 		var parsed = JSON.parse_string(text)
 		if parsed == null or typeof(parsed) != TYPE_DICTIONARY:
 			continue
 		var payload = parsed
-		if not payload.has("cx") or not payload.has("cy") or not payload.has("size") or not payload.has("tiles"):
+		if not payload.has("x") or not payload.has("y") or not payload.has("size") or not payload.has("tiles"):
 			continue
 		var size = int(payload.get("size", CHUNK_SIZE_TILES))
 		if size != CHUNK_SIZE_TILES:
 			continue
-		var chunk = Vector2i(int(payload["cx"]), int(payload["cy"]))
+		var chunk = Vector2i(int(payload["x"]), int(payload["y"]))
+		var version = int(payload.get("version", 0))
 		_apply_chunk(chunk, payload["tiles"])
-		_loading_chunks.erase(chunk)
 		_loaded_chunks[chunk] = true
+		_chunk_versions[chunk] = version
 
 func _apply_chunk(chunk: Vector2i, tiles: Variant) -> void:
 	if typeof(tiles) != TYPE_ARRAY:
@@ -163,7 +171,7 @@ func _apply_chunk(chunk: Vector2i, tiles: Variant) -> void:
 		for x in range(CHUNK_SIZE_TILES):
 			var tile_pos = Vector2i(start.x + x, start.y + y)
 			var tile_id = int(tiles_array[index])
-			_apply_tile_update(tile_pos, tile_id, false)
+			_apply_tile_update(tile_pos, tile_id)
 			index += 1
 
 func set_editor_mode(enabled: bool) -> void:
@@ -187,15 +195,12 @@ func save_map_changes() -> void:
 	var payload = {
 		"changes": changes
 	}
-	print("WorldMap: sending map update with %s changes" % changes.size())
-	if changes.size() > 0:
-		var sample = changes[0]
-		print("WorldMap: sample change x=%s y=%s tile=%s" % [sample.get("x"), sample.get("y"), sample.get("tile")])
-	var message = MAP_UPDATE_PREFIX + JSON.stringify(payload)
+	var message = EDIT_PREFIX + JSON.stringify(payload)
 	var err = _udp.put_packet(message.to_utf8_buffer())
 	if err != OK:
 		push_warning("WorldMap: failed to send map update (err %s)" % err)
 		return
+	_request_chunks_for_changes(changes)
 	_pending_changes.clear()
 
 func _place_tile_at(world_pos: Vector2) -> void:
@@ -203,42 +208,15 @@ func _place_tile_at(world_pos: Vector2) -> void:
 		return
 	var local_pos = to_local(world_pos)
 	var cell = local_to_map(local_pos)
-	_apply_tile_update(cell, _selected_tile_id, true)
+	_queue_tile_change(cell, _selected_tile_id)
 
-func _apply_tile_update(tile_pos: Vector2i, tile_id: int, track_change: bool) -> void:
+func _queue_tile_change(tile_pos: Vector2i, tile_id: int) -> void:
 	if _source_id == -1:
 		return
-	var atlas_coords = _tile_atlas.get(tile_id, TILE_GRASS)
-	set_cell(0, tile_pos, _source_id, atlas_coords)
-	if track_change:
-		_pending_changes[tile_pos] = tile_id
-
-func _apply_map_update(payload_text: String) -> void:
-	var parsed = JSON.parse_string(payload_text)
-	if parsed == null or typeof(parsed) != TYPE_DICTIONARY:
+	if not _tile_atlas.has(tile_id):
 		return
-	if not parsed.has("changes"):
-		return
-	var changes = parsed["changes"]
-	if typeof(changes) != TYPE_ARRAY:
-		return
-	if changes.size() > 0:
-		print("WorldMap: received map update with %s changes" % changes.size())
-	apply_tile_updates(changes)
-
-func receive_map_update(message: String) -> void:
-	if message.begins_with(MAP_UPDATE_PREFIX):
-		_apply_map_update(message.substr(MAP_UPDATE_PREFIX.length()))
-
-func apply_tile_updates(changes: Array) -> void:
-	for item in changes:
-		if typeof(item) != TYPE_DICTIONARY:
-			continue
-		if not item.has("x") or not item.has("y") or not item.has("tile"):
-			continue
-		var tile_pos = Vector2i(int(item["x"]), int(item["y"])) - map_origin_tile
-		var tile_id = int(item["tile"])
-		_apply_tile_update(tile_pos, tile_id, false)
+	_pending_changes[tile_pos] = tile_id
+	save_map_changes()
 
 func _ensure_player() -> void:
 	if _player != null:
@@ -247,4 +225,25 @@ func _ensure_player() -> void:
 		return
 	_player = get_node_or_null(player_path)
 	if _player != null:
-		_refresh_chunks(true)
+		_request_visible_chunks(true)
+
+func _apply_tile_update(tile_pos: Vector2i, tile_id: int) -> void:
+	if _source_id == -1:
+		return
+	var atlas_coords = _tile_atlas.get(tile_id, TILE_GRASS)
+	set_cell(0, tile_pos, _source_id, atlas_coords)
+
+func _request_chunks_for_changes(changes: Array) -> void:
+	var requested := {}
+	for item in changes:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		if not item.has("x") or not item.has("y"):
+			continue
+		var server_x = int(item["x"])
+		var server_y = int(item["y"])
+		var chunk = Vector2i(floor(server_x / float(CHUNK_SIZE_TILES)), floor(server_y / float(CHUNK_SIZE_TILES)))
+		if requested.has(chunk):
+			continue
+		requested[chunk] = true
+		_request_chunk(chunk)

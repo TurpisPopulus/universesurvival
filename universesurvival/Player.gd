@@ -8,7 +8,6 @@ extends CharacterBody2D
 @export var send_rate_hz: float = 10.0
 @export var remote_scene: PackedScene = preload("res://remote_player.tscn")
 @onready var sprite: Sprite2D = get_node_or_null("Sprite2D")
-@onready var world_map: Node = get_parent().get_node_or_null("WorldMap")
 
 var _udp := PacketPeerUDP.new()
 var _send_accum := 0.0
@@ -65,8 +64,6 @@ func _poll_server() -> void:
 			push_warning("UDP receive failed (err %s)" % _udp.get_packet_error())
 			return
 		_last_reply = data.get_string_from_utf8()
-		if _try_forward_map_update(_last_reply):
-			continue
 		for line in _last_reply.split("\n", false):
 			var parts := line.split("|")
 			if parts.size() != 4:
@@ -98,17 +95,6 @@ func _poll_server() -> void:
 				node.queue_free()
 	for id in to_remove:
 		_remotes.erase(id)
-
-func _try_forward_map_update(message: String) -> bool:
-	if not message.begins_with("MAPUPDATE|"):
-		return false
-	print("Player: received MAPUPDATE packet")
-	if world_map != null:
-		if world_map.has_method("receive_map_update"):
-			world_map.call("receive_map_update", message)
-		elif world_map.has_method("_apply_map_update"):
-			world_map.call("_apply_map_update", message.substr("MAPUPDATE|".length()))
-	return true
 
 func _fmt(value: float) -> String:
 	return String.num(value, 3)

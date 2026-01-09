@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var port = 7777;
 if (args.Length > 0 && int.TryParse(args[0], out var parsedPort))
@@ -18,14 +19,12 @@ var dataDir = Path.Combine(baseDir, "Data");
 Directory.CreateDirectory(dataDir);
 var playersPath = Path.Combine(dataDir, "players.json");
 var accountsPath = Path.Combine(dataDir, "accounts.json");
-var worldPath = Path.Combine(dataDir, "world.json");
 var players = LoadPlayers(playersPath);
 var accounts = LoadAccounts(accountsPath);
-var world = LoadWorld(worldPath);
+var world = LoadWorld(dataDir);
 var endpoints = new Dictionary<string, IPEndPoint>(StringComparer.Ordinal);
-var mapEndpoints = new HashSet<IPEndPoint>();
 var activeWindow = TimeSpan.FromSeconds(10);
-MapChange? lastMapChange = null;
+var chunkSaveInterval = TimeSpan.FromSeconds(30);
 
 if (NormalizeAccounts(accounts))
 {
@@ -36,15 +35,15 @@ void SaveAll()
 {
     SavePlayers(playersPath, players, gate);
     SaveAccounts(accountsPath, accounts, gate);
+    SaveDirtyChunks(dataDir, world, gate);
 }
 
 using var udp = new UdpClient(port);
 Console.WriteLine($"UDP server listening on 0.0.0.0:{port}");
 Console.WriteLine("Payload format: id|name|x|y");
-Console.WriteLine($"World loaded: {world.Width}x{world.Height} tiles");
+Console.WriteLine($"World loaded: {world.Chunks.Count} chunks");
 Console.WriteLine($"[DATA] baseDir   = {baseDir}");
 Console.WriteLine($"[DATA] dataDir   = {dataDir}");
-Console.WriteLine($"[DATA] worldPath = {worldPath}");
 Console.WriteLine($"[DATA] playersPath = {playersPath}");
 Console.WriteLine($"[DATA] accountsPath = {accountsPath}");
 Console.WriteLine("Press Ctrl+C to stop.");
@@ -66,6 +65,21 @@ var saveTask = Task.Run(async () =>
         while (await timer.WaitForNextTickAsync(cts.Token))
         {
             SavePlayers(playersPath, players, gate);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+    }
+});
+
+var chunkSaveTask = Task.Run(async () =>
+{
+    try
+    {
+        using var timer = new PeriodicTimer(chunkSaveInterval);
+        while (await timer.WaitForNextTickAsync(cts.Token))
+        {
+            SaveDirtyChunks(dataDir, world, gate);
         }
     }
     catch (OperationCanceledException)
@@ -178,112 +192,37 @@ while (!cts.IsCancellationRequested)
             continue;
         }
 
-        mapEndpoints.Add(result.RemoteEndPoint);
-        var last = lastMapChange;
-        if (last != null)
-        {
-            const int chunkSize = 64;
-            var startX = chunkRequest.Cx * chunkSize;
-            var startY = chunkRequest.Cy * chunkSize;
-            var endX = startX + chunkSize - 1;
-            var endY = startY + chunkSize - 1;
-            if (last.X >= startX && last.X <= endX &&
-                last.Y >= startY && last.Y <= endY)
-            {
-                var tileValue = world.GetTile(last.X, last.Y);
-                Console.WriteLine(
-                    $"Chunk {chunkRequest.Cx},{chunkRequest.Cy} includes last change ({last.X},{last.Y}) tile={tileValue}"
-                );
-            }
-        }
-        string chunkResponse;
+        string? chunkResponse = null;
         lock (gate)
         {
-            chunkResponse = BuildChunkResponse(world, chunkRequest);
+            var chunk = GetOrCreateChunk(world, chunkRequest.Cx, chunkRequest.Cy);
+            if (chunkRequest.LastKnownVersion < 0 || chunk.Version > chunkRequest.LastKnownVersion)
+            {
+                chunkResponse = BuildChunkResponse(chunk);
+            }
         }
-        await SendToAsync(udp, chunkResponse, result.RemoteEndPoint);
+        if (chunkResponse != null)
+        {
+            await SendToAsync(udp, chunkResponse, result.RemoteEndPoint);
+        }
         continue;
     }
 
-    if (TryParseMapUpdate(message, out var mapUpdate, out var mapUpdateError))
+    if (TryParseEdit(message, out var editPayload, out var editError))
     {
-        if (mapUpdateError.Length != 0)
+        if (editError.Length != 0)
         {
-            Console.WriteLine($"Map update rejected from {result.RemoteEndPoint}: {mapUpdateError}");
-            await SendToAsync(udp, "ERR|" + mapUpdateError, result.RemoteEndPoint);
+            Console.WriteLine($"Edit rejected from {result.RemoteEndPoint}: {editError}");
+            await SendToAsync(udp, "ERR|" + editError, result.RemoteEndPoint);
             continue;
         }
 
-        Console.WriteLine($"[MAPUPDATE] received changes={mapUpdate.Changes.Length} from {result.RemoteEndPoint}");
-        mapEndpoints.Add(result.RemoteEndPoint);
-        MapUpdatePayload appliedUpdate;
+        var appliedCount = 0;
         lock (gate)
         {
-            appliedUpdate = ApplyMapUpdate(world, mapUpdate);
-            if (appliedUpdate.Changes.Length > 0)
-            {
-                SaveWorld(worldPath, world);
-            }
+            appliedCount = ApplyEdits(world, editPayload);
         }
-        var appliedCount = appliedUpdate.Changes?.Length ?? 0;
-        Console.WriteLine($"[MAPUPDATE] applied changes={appliedCount}");
-        if (appliedCount > 0)
-        {
-            lastMapChange = appliedUpdate.Changes[0];
-            var sample = lastMapChange;
-            Console.WriteLine($"Map update sample applied: ({sample.X},{sample.Y}) tile={sample.Tile}");
-            Console.WriteLine($"[MAPUPDATE] saved world to {worldPath}");
-        }
-        if (appliedCount == 0 && mapUpdate.Changes.Length > 0)
-        {
-            Console.WriteLine("[MAPUPDATE] applied=0 (ignored/out of bounds?)");
-            var sample = mapUpdate.Changes
-                .Take(3)
-                .Select(change => $"({change.X},{change.Y})")
-                .ToArray();
-            Console.WriteLine(
-                $"Map update ignored (out of bounds?). Sample coords: {string.Join(", ", sample)}. World {world.Width}x{world.Height}"
-            );
-        }
-
-        var updateMessage = "MAPUPDATE|" + JsonSerializer.Serialize(appliedUpdate, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-        var updateBytes = Encoding.UTF8.GetBytes(updateMessage);
-        List<IPEndPoint> playerTargets;
-        lock (gate)
-        {
-            playerTargets = endpoints.Values.ToList();
-        }
-        var combinedTargets = new List<IPEndPoint>(mapEndpoints.Count + playerTargets.Count);
-        combinedTargets.AddRange(mapEndpoints);
-        combinedTargets.AddRange(playerTargets);
-
-        var sentToMap = new HashSet<string>(StringComparer.Ordinal);
-        var sentCount = 0;
-        foreach (var endpoint in combinedTargets)
-        {
-            var key = endpoint.ToString();
-            if (!sentToMap.Add(key))
-            {
-                continue;
-            }
-
-            try
-            {
-                await udp.SendAsync(updateBytes, updateBytes.Length, endpoint);
-                sentCount++;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Send error: {ex.Message}");
-            }
-        }
-
-        Console.WriteLine(
-            $"Map update broadcast: {appliedCount} changes to {sentCount} endpoints (map {mapEndpoints.Count}, players {playerTargets.Count})"
-        );
+        Console.WriteLine($"[EDIT] applied changes={appliedCount} from {result.RemoteEndPoint}");
         continue;
     }
 
@@ -361,6 +300,7 @@ while (!cts.IsCancellationRequested)
 
 SaveAll();
 await saveTask;
+await chunkSaveTask;
 
 static bool TryParseRegister(string payload, out string name, out string password, out string error)
 {
@@ -465,84 +405,89 @@ static bool TryParseChunkRequest(string payload, out ChunkRequest request, out s
     }
 
     var parts = payload.Split('|');
-    if (parts.Length < 3)
+    if (parts.Length < 4)
     {
         error = "bad_chunk";
         return true;
     }
 
     if (!int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cx) ||
-        !int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cy))
+        !int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cy) ||
+        !int.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var lastKnownVersion))
     {
         error = "bad_chunk";
         return true;
     }
 
-    request = new ChunkRequest(cx, cy);
+    request = new ChunkRequest(cx, cy, lastKnownVersion);
     return true;
 }
 
-static bool TryParseMapUpdate(string payload, out MapUpdatePayload update, out string error)
+static bool TryParseEdit(string payload, out EditPayload update, out string error)
 {
-    update = new MapUpdatePayload();
+    update = new EditPayload();
     error = string.Empty;
 
-    if (!payload.StartsWith("MAPUPDATE|", StringComparison.Ordinal))
+    if (!payload.StartsWith("EDIT|", StringComparison.Ordinal))
     {
         return false;
     }
 
-    var json = payload.Substring("MAPUPDATE|".Length);
+    var json = payload.Substring("EDIT|".Length);
     if (string.IsNullOrWhiteSpace(json))
     {
-        error = "bad_map_update";
+        error = "bad_edit";
         return true;
     }
 
     try
     {
-        update = JsonSerializer.Deserialize<MapUpdatePayload>(json, new JsonSerializerOptions
+        update = JsonSerializer.Deserialize<EditPayload>(json, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
-        }) ?? new MapUpdatePayload();
+        }) ?? new EditPayload();
     }
     catch (Exception)
     {
-        error = "bad_map_update";
+        error = "bad_edit";
         return true;
     }
 
     if (update.Changes == null || update.Changes.Length == 0)
     {
-        error = "bad_map_update";
+        error = "bad_edit";
     }
 
     return true;
 }
 
-static MapUpdatePayload ApplyMapUpdate(WorldMap world, MapUpdatePayload update)
+static int ApplyEdits(World world, EditPayload update)
 {
     if (update.Changes == null || update.Changes.Length == 0)
     {
-        return new MapUpdatePayload();
+        return 0;
     }
 
-    var applied = new List<MapChange>();
+    var applied = 0;
     foreach (var change in update.Changes)
     {
-        if (change.X < 0 || change.Y < 0 || change.X >= world.Width || change.Y >= world.Height)
+        var cx = FloorDiv(change.X, Chunk.ChunkSize);
+        var cy = FloorDiv(change.Y, Chunk.ChunkSize);
+        var localX = change.X - cx * Chunk.ChunkSize;
+        var localY = change.Y - cy * Chunk.ChunkSize;
+        if (localX < 0 || localX >= Chunk.ChunkSize || localY < 0 || localY >= Chunk.ChunkSize)
         {
             continue;
         }
 
-        world.SetTile(change.X, change.Y, change.Tile);
-        applied.Add(change);
+        var chunk = GetOrCreateChunk(world, cx, cy);
+        chunk.SetTile(localX, localY, change.Tile);
+        chunk.Version++;
+        chunk.IsDirty = true;
+        applied++;
     }
 
-    return new MapUpdatePayload
-    {
-        Changes = applied.ToArray()
-    };
+    return applied;
 }
 
 static bool IsNameTaken(
@@ -630,30 +575,15 @@ static string BuildBroadcast(IEnumerable<PlayerState> players)
     return string.Join('\n', lines);
 }
 
-static string BuildChunkResponse(WorldMap world, ChunkRequest request)
+static string BuildChunkResponse(Chunk chunk)
 {
-    const int chunkSize = 64;
-    var tiles = new int[chunkSize * chunkSize];
-    var startX = request.Cx * chunkSize;
-    var startY = request.Cy * chunkSize;
-    var index = 0;
-
-    for (var y = 0; y < chunkSize; y++)
-    {
-        var worldY = startY + y;
-        for (var x = 0; x < chunkSize; x++)
-        {
-            var worldX = startX + x;
-            tiles[index++] = world.GetTile(worldX, worldY);
-        }
-    }
-
     var payload = new ChunkPayload
     {
-        Cx = request.Cx,
-        Cy = request.Cy,
-        Size = chunkSize,
-        Tiles = tiles
+        X = chunk.X,
+        Y = chunk.Y,
+        Size = Chunk.ChunkSize,
+        Version = chunk.Version,
+        Tiles = chunk.Tiles
     };
 
     return JsonSerializer.Serialize(payload, new JsonSerializerOptions
@@ -706,70 +636,98 @@ static Dictionary<string, Account> LoadAccounts(string path)
     }
 }
 
-static WorldMap LoadWorld(string path)
+static World LoadWorld(string dataDir)
 {
+    var chunks = new Dictionary<ChunkId, Chunk>();
     try
     {
-        if (!File.Exists(path))
+        foreach (var path in Directory.EnumerateFiles(dataDir, "chunk_*.json"))
         {
-            var generated = WorldMap.Generate(256, 256);
-            SaveWorld(path, generated);
-            return generated;
-        }
+            var chunk = LoadChunk(path);
+            if (chunk == null)
+            {
+                continue;
+            }
 
-        var json = File.ReadAllText(path, Encoding.UTF8);
-        var map = JsonSerializer.Deserialize<WorldMap>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
-        if (map == null || map.Tiles == null || map.Tiles.Length == 0)
-        {
-            var generated = WorldMap.Generate(256, 256);
-            SaveWorld(path, generated);
-            return generated;
+            var id = new ChunkId(chunk.X, chunk.Y);
+            chunks[id] = chunk;
         }
-
-        var expected = map.Width * map.Height;
-        if (expected <= 0)
-        {
-            var generated = WorldMap.Generate(256, 256);
-            SaveWorld(path, generated);
-            return generated;
-        }
-
-        if (map.Tiles.Length != expected)
-        {
-            Console.WriteLine($"World load warning: tiles length {map.Tiles.Length} expected {expected}. Repairing.");
-            var repaired = new int[expected];
-            Array.Copy(map.Tiles, repaired, Math.Min(map.Tiles.Length, repaired.Length));
-            map.Tiles = repaired;
-            SaveWorld(path, map);
-        }
-
-        return map;
     }
     catch (Exception ex)
     {
         Console.WriteLine($"World load error: {ex.Message}");
-        var generated = WorldMap.Generate(256, 256);
-        SaveWorld(path, generated);
-        return generated;
     }
+
+    return new World(chunks);
 }
 
-static void SaveWorld(string path, WorldMap world)
+static Chunk? LoadChunk(string path)
 {
     try
     {
-        var json = JsonSerializer.Serialize(world, new JsonSerializerOptions
+        var json = File.ReadAllText(path, Encoding.UTF8);
+        var chunk = JsonSerializer.Deserialize<Chunk>(json, new JsonSerializerOptions
         {
-            WriteIndented = true
+            PropertyNameCaseInsensitive = true
         });
-        WriteAllTextAtomic(path, json);
+        if (chunk == null)
+        {
+            return null;
+        }
+
+        if (chunk.Tiles == null || chunk.Tiles.Length != Chunk.TileCount)
+        {
+            var repaired = new int[Chunk.TileCount];
+            if (chunk.Tiles != null)
+            {
+                Array.Copy(chunk.Tiles, repaired, Math.Min(chunk.Tiles.Length, repaired.Length));
+            }
+            chunk.Tiles = repaired;
+        }
+
+        chunk.IsDirty = false;
+        return chunk;
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"World save error: {ex.Message}");
+        Console.WriteLine($"Chunk load error ({Path.GetFileName(path)}): {ex.Message}");
+        return null;
+    }
+}
+
+static void SaveDirtyChunks(string dataDir, World world, object gate)
+{
+    List<(Chunk chunk, int version)> dirty;
+    lock (gate)
+    {
+        dirty = world.Chunks.Values
+            .Where(chunk => chunk.IsDirty)
+            .Select(chunk => (chunk, chunk.Version))
+            .ToList();
+    }
+
+    foreach (var (chunk, version) in dirty)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(chunk, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            var path = Path.Combine(dataDir, $"chunk_{chunk.X}_{chunk.Y}.json");
+            WriteAllTextAtomic(path, json);
+            lock (gate)
+            {
+                if (chunk.Version == version)
+                {
+                    chunk.IsDirty = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chunk save error ({chunk.X},{chunk.Y}): {ex.Message}");
+        }
     }
 }
 
@@ -942,45 +900,96 @@ static int NormalizeAccessLevel(string name, int level)
     return 5;
 }
 
+static Chunk GetOrCreateChunk(World world, int cx, int cy)
+{
+    var id = new ChunkId(cx, cy);
+    if (world.Chunks.TryGetValue(id, out var chunk))
+    {
+        return chunk;
+    }
+
+    chunk = new Chunk
+    {
+        X = cx,
+        Y = cy
+    };
+    world.Chunks[id] = chunk;
+    return chunk;
+}
+
+static int FloorDiv(int value, int size)
+{
+    if (size <= 0)
+    {
+        return 0;
+    }
+
+    if (value >= 0)
+    {
+        return value / size;
+    }
+
+    return -(((-value - 1) / size) + 1);
+}
+
 readonly record struct PlayerPacket(string Id, string Name, float X, float Y);
-readonly record struct ChunkRequest(int Cx, int Cy);
+readonly record struct ChunkRequest(int Cx, int Cy, int LastKnownVersion);
+readonly record struct ChunkId(int X, int Y);
 
 sealed record PlayerState(string Id, string Name, float X, float Y, DateTime LastSeenUtc);
 
 sealed class ChunkPayload
 {
-    public int Cx { get; set; }
-    public int Cy { get; set; }
+    public int X { get; set; }
+    public int Y { get; set; }
     public int Size { get; set; }
+    public int Version { get; set; }
     public int[] Tiles { get; set; } = Array.Empty<int>();
 }
 
-sealed class MapUpdatePayload
+sealed class EditPayload
 {
-    public MapChange[] Changes { get; set; } = Array.Empty<MapChange>();
+    public TileChange[] Changes { get; set; } = Array.Empty<TileChange>();
 }
 
-sealed class MapChange
+sealed class TileChange
 {
     public int X { get; set; }
     public int Y { get; set; }
     public int Tile { get; set; }
 }
 
-sealed class WorldMap
+sealed class World
 {
-    public int Width { get; set; }
-    public int Height { get; set; }
-    public int[] Tiles { get; set; } = Array.Empty<int>();
+    public Dictionary<ChunkId, Chunk> Chunks { get; }
 
-    public int GetTile(int x, int y)
+    public World(Dictionary<ChunkId, Chunk> chunks)
     {
-        if (x < 0 || y < 0 || x >= Width || y >= Height)
+        Chunks = chunks;
+    }
+}
+
+sealed class Chunk
+{
+    public const int ChunkSize = 100;
+    public const int TileCount = ChunkSize * ChunkSize;
+
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Version { get; set; }
+    public int[] Tiles { get; set; } = new int[TileCount];
+
+    [JsonIgnore]
+    public bool IsDirty { get; set; }
+
+    public int GetTile(int localX, int localY)
+    {
+        if (localX < 0 || localY < 0 || localX >= ChunkSize || localY >= ChunkSize)
         {
             return 0;
         }
 
-        var index = y * Width + x;
+        var index = localY * ChunkSize + localX;
         if (index < 0 || index >= Tiles.Length)
         {
             return 0;
@@ -989,40 +998,20 @@ sealed class WorldMap
         return Tiles[index];
     }
 
-    public void SetTile(int x, int y, int value)
+    public void SetTile(int localX, int localY, int value)
     {
-        if (x < 0 || y < 0 || x >= Width || y >= Height)
+        if (localX < 0 || localY < 0 || localX >= ChunkSize || localY >= ChunkSize)
         {
             return;
         }
 
-        var index = y * Width + x;
+        var index = localY * ChunkSize + localX;
         if (index < 0 || index >= Tiles.Length)
         {
             return;
         }
 
         Tiles[index] = value;
-    }
-
-    public static WorldMap Generate(int width, int height)
-    {
-        var tiles = new int[width * height];
-        for (var y = 0; y < height; y++)
-        {
-            for (var x = 0; x < width; x++)
-            {
-                var value = ((x + y) % 7 == 0 || (x * 3 + y * 2) % 17 == 0) ? 1 : 0;
-                tiles[y * width + x] = value;
-            }
-        }
-
-        return new WorldMap
-        {
-            Width = width,
-            Height = height,
-            Tiles = tiles
-        };
     }
 }
 
