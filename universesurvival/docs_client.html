@@ -239,7 +239,7 @@
         <h2>Сцены и ответственность</h2>
         <div class="card">
           <ul>
-            <li><code>main_menu.tscn</code> — вход, регистрация, статус сервера, выбор внешности.</li>
+            <li><code>main_menu.tscn</code> — главное меню, вход и регистрация, фон <code>ui/main_menu_bg.png</code>, модальные окна скрывают панель меню.</li>
             <li><code>main.tscn</code> — игровая сцена, подключение, HUD и загрузочный оверлей.</li>
             <li><code>player.tscn</code> — локальный игрок и ввод.</li>
             <li><code>remote_player.tscn</code> — удаленные игроки.</li>
@@ -361,6 +361,7 @@ NPCS|cx|cy|ver -> NPC в чанке</code></pre>
             <li><strong>Картинка:</strong> <code>res://ui/loading_screen.png</code> — обычный PNG, можно менять без кода.</li>
             <li><strong>Прогресс:</strong> <code>Ui/LoadingOverlay/LoadingProgress</code> отображает загрузку стартовых чанков карты и объектов.</li>
           </ul>
+          <p>Главное меню использует фон <code>res://ui/main_menu_bg.png</code>; можно заменить файл на другой PNG без изменения сцены.</p>
           <p>Загрузка считается завершенной, когда оба слоя отчитались о готовности:</p>
           <ul>
             <li><code>WorldMap.gd</code> и <code>WorldObjects.gd</code> считают стартовый радиус чанков (по <code>VIEW_DISTANCE_CHUNKS</code>), отслеживают получение ответов и испускают сигналы <code>initial_load_progress</code> и <code>initial_load_completed</code>.</li>

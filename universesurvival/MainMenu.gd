@@ -20,10 +20,11 @@ const EYES_ATLAS_PATH := "res://characters/eyes.png"
 const NOSES_ATLAS_PATH := "res://characters/noses.png"
 const MOUTHS_ATLAS_PATH := "res://characters/mouths.png"
 
-@onready var enter_button: Button = $Center/MenuVBox/EnterButton
-@onready var create_button: Button = $Center/MenuVBox/CreateButton
-@onready var settings_button: Button = $Center/MenuVBox/SettingsButton
-@onready var exit_button: Button = $Center/MenuVBox/ExitButton
+@onready var menu_panel: Control = $Center/MenuPanel
+@onready var enter_button: Button = $Center/MenuPanel/MenuMargin/MenuVBox/EnterButton
+@onready var create_button: Button = $Center/MenuPanel/MenuMargin/MenuVBox/CreateButton
+@onready var settings_button: Button = $Center/MenuPanel/MenuMargin/MenuVBox/SettingsButton
+@onready var exit_button: Button = $Center/MenuPanel/MenuMargin/MenuVBox/ExitButton
 @onready var server_status: Label = $ServerStatus
 @onready var status_timer: Timer = $StatusTimer
 
@@ -79,6 +80,7 @@ func _ready() -> void:
 	enter_button.disabled = false
 	create_overlay.visible = false
 	login_overlay.visible = false
+	_set_menu_visible(true)
 	server_status.text = "Server: checking..."
 	status_timer.timeout.connect(_on_status_timer_timeout)
 	_refresh_server_status()
@@ -96,6 +98,7 @@ func _on_enter_pressed() -> void:
 	login_status.text = ""
 	login_name.text = ""
 	login_password.text = ""
+	_set_menu_visible(false)
 	login_overlay.visible = true
 
 func _on_create_pressed() -> void:
@@ -114,6 +117,7 @@ func _on_create_pressed() -> void:
 	appearance_mouth.value = 1
 	appearance_beard.value = 1
 	_update_appearance_preview()
+	_set_menu_visible(false)
 	create_overlay.visible = true
 
 func _on_settings_pressed() -> void:
@@ -143,6 +147,7 @@ func _on_create_confirm_pressed() -> void:
 	match result:
 		0:
 			create_overlay.visible = false
+			_set_menu_visible(true)
 		1:
 			create_status.text = "Player already exists."
 		2:
@@ -152,6 +157,7 @@ func _on_create_confirm_pressed() -> void:
 
 func _on_create_back_pressed() -> void:
 	create_overlay.visible = false
+	_set_menu_visible(true)
 
 func _on_login_confirm_pressed() -> void:
 	var name := login_name.text.strip_edges()
@@ -186,6 +192,11 @@ func _on_login_confirm_pressed() -> void:
 
 func _on_login_back_pressed() -> void:
 	login_overlay.visible = false
+	_set_menu_visible(true)
+
+func _set_menu_visible(visible: bool) -> void:
+	if menu_panel != null:
+		menu_panel.visible = visible
 
 func _on_status_timer_timeout() -> void:
 	_refresh_server_status()

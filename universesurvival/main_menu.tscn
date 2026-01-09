@@ -1,33 +1,70 @@
-[gd_scene load_steps=2 format=3 uid="uid://b6b3g7l3k65y1"]
+[gd_scene load_steps=3 format=3 uid="uid://b6b3g7l3k65y1"]
 
 [ext_resource type="Script" uid="uid://c6r8v4x4d0k5l" path="res://MainMenu.gd" id="1_8sp31"]
+[ext_resource type="Texture2D" path="res://ui/main_menu_bg.png" id="2_bg"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu"]
+bg_color = Color(0.07, 0.08, 0.1, 0.82)
+border_color = Color(1, 1, 1, 0.12)
+border_width_all = 1
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 12
+shadow_offset = Vector2(0, 6)
 
 [node name="MainMenu" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1_8sp31")
 
+[node name="Background" type="TextureRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+expand_mode = 1
+stretch_mode = 6
+texture = ExtResource("2_bg")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.25)
+
 [node name="Center" type="CenterContainer" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="MenuVBox" type="VBoxContainer" parent="Center"]
-alignment = 1
+[node name="MenuPanel" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(420, 0)
+theme_override_styles/panel = SubResource("StyleBoxFlat_menu")
 
-[node name="Title" type="Label" parent="Center/MenuVBox"]
+[node name="MenuMargin" type="MarginContainer" parent="Center/MenuPanel"]
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="MenuVBox" type="VBoxContainer" parent="Center/MenuPanel/MenuMargin"]
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Center/MenuPanel/MenuMargin/MenuVBox"]
 text = "UNIVERSE SURVIVAL"
 horizontal_alignment = 1
+theme_override_font_sizes/font_size = 32
 
-[node name="EnterButton" type="Button" parent="Center/MenuVBox"]
+[node name="EnterButton" type="Button" parent="Center/MenuPanel/MenuMargin/MenuVBox"]
 text = "Enter"
 
-[node name="CreateButton" type="Button" parent="Center/MenuVBox"]
+[node name="CreateButton" type="Button" parent="Center/MenuPanel/MenuMargin/MenuVBox"]
 text = "Create Player"
 
-[node name="SettingsButton" type="Button" parent="Center/MenuVBox"]
+[node name="SettingsButton" type="Button" parent="Center/MenuPanel/MenuMargin/MenuVBox"]
 text = "Settings"
 
-[node name="ExitButton" type="Button" parent="Center/MenuVBox"]
+[node name="ExitButton" type="Button" parent="Center/MenuPanel/MenuMargin/MenuVBox"]
 text = "Exit"
 
 [node name="CreateOverlay" type="CenterContainer" parent="."]
