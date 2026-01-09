@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
@@ -163,335 +163,179 @@
     <div class="page">
       <header>
         <div class="brand">Universe Survival Client</div>
-        <div class="tag">Структура · Godot</div>
+        <div class="tag">Godot 4 · Клиент</div>
       </header>
 
       <section class="hero">
-        <h1>Клиент: только структура, масштабируемо</h1>
+        <h1>Клиент: вход, меню, мир и редакторы</h1>
         <p>
-          Клиент отображает мир и отправляет действия игрока. Истина всегда у сервера,
-          локальные JSON используются только для настроек и кеша интерфейса.
+          Клиент отвечает за UI, визуализацию мира и синхронизацию с UDP-сервером.
+          Вся игра живет в сцене <code>main.tscn</code>, а взаимодействие с сервером
+          происходит через короткие текстовые команды и JSON-снимки по версиям.
         </p>
         <div class="grid">
           <div class="card">
-            <h3>Источник истины</h3>
-            <p><span class="pill">Server RAM</span> Клиент синхронизирует копию мира.</p>
+            <h3>Godot 4.5</h3>
+            <p><span class="pill">UI + Scene</span> Главное меню и игровая сцена находятся в отдельных tscn.</p>
           </div>
           <div class="card">
-            <h3>Категории сущностей</h3>
-            <p>Ресурсы, объекты, NPC отображаются на отдельных слоях.</p>
+            <h3>UDP протокол</h3>
+            <p>Регистрация, вход и синхронизация карты/объектов выполняются по UDP.</p>
           </div>
           <div class="card">
-            <h3>Масштаб</h3>
-            <p>Чанк-стриминг, кэш видимости, загрузка по версиям.</p>
+            <h3>Редакторы</h3>
+            <p>Внутри игры доступны админские панели редактирования карты и объектов.</p>
           </div>
         </div>
       </section>
 
       <section class="section">
-        <h2>План структуры проекта</h2>
-        <p>Эталонная структура для роста проекта.</p>
+        <h2>Быстрый старт</h2>
+        <div class="card">
+          <ul>
+            <li>Запусти сервер: <code>server/run_server.bat</code>.</li>
+            <li>Открой проект Godot и запусти сцену <code>res://main_menu.tscn</code>.</li>
+            <li>Используй <strong>Create Player</strong> для регистрации, затем <strong>Enter</strong> для входа.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Структура клиента</h2>
         <pre><code>universesurvival/
   main_menu.tscn
+  MainMenu.gd
   main.tscn
+  Main.gd
+  Player.gd
+  RemotePlayer.gd
+  CharacterAppearance.gd
   WorldMap.gd
   WorldObjects.gd
   TilePalette.gd
   ObjectPalette.gd
+  data/
+    object_types.json
+  ui/
+    main_menu_bg.png
+    loading_screen.png
+  tiles/
+    terrain.png
+    objects.png
+    objects_palette.png
   characters/
-    body_skinny.png
-    body_normal.png
-    body_fat.png
+    body_*.png
     heads.png
-    hair_male.png
-    hair_female.png
-    beards.png
+    hair_*.png
     eyes.png
     noses.png
     mouths.png
-  ui/
-    loading_screen.png
-  scenes/
-    player.tscn
-    remote_player.tscn
-    world/
-      world_root.tscn
-  scripts/
-    Net/
-      UdpClient.gd
-      PacketRouter.gd
-    World/
-      WorldStream.gd
-      ChunkCache.gd
-    Entities/
-      EntityRegistry.gd
-      ResourceView.gd
-      ObjectView.gd
-      NpcView.gd
-    UI/
-      Hud.gd
-      AdminPanel.gd
-  data/
-    client_settings.json</code></pre>
+    beards.png</code></pre>
       </section>
 
       <section class="section">
-        <h2>Сцены и ответственность</h2>
+        <h2>Главное меню (main_menu.tscn + MainMenu.gd)</h2>
         <div class="card">
           <ul>
-            <li><code>main_menu.tscn</code> — главное меню, вход и регистрация, фон <code>ui/main_menu_bg.png</code>, модальные окна скрывают панель меню.</li>
-            <li><code>main.tscn</code> — игровая сцена, подключение, HUD и загрузочный оверлей.</li>
-            <li><code>player.tscn</code> — локальный игрок и ввод.</li>
-            <li><code>remote_player.tscn</code> — удаленные игроки.</li>
-            <li><code>world_root.tscn</code> — TileMap и слои сущностей.</li>
+            <li><strong>Enter</strong> открывает окно входа и отправляет <code>LOGIN</code>.</li>
+            <li><strong>Create Player</strong> показывает форму регистрации и отправляет <code>REGISTER</code>.</li>
+            <li><strong>Settings</strong> открывает экран настроек клиента.</li>
+            <li><strong>Exit</strong> закрывает игру.</li>
+          </ul>
+          <p>Окна входа/регистрации и настройки скрывают главное меню, чтобы не было наложений.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Настройки</h2>
+        <div class="card">
+          <p>Экран настроек содержит четыре кнопки: <strong>Видео</strong>, <strong>Звук</strong>, <strong>Авторы</strong>, <strong>Назад</strong>.</p>
+          <ul>
+            <li><strong>Видео:</strong> выбор доступного разрешения окна и переключение режимов <em>Окно</em>/<em>Полный экран</em>.</li>
+            <li><strong>Звук:</strong> пока пусто (заготовка под будущие слайдеры громкости).</li>
+            <li><strong>Авторы:</strong> краткая информация о проекте.</li>
+            <li><strong>Назад:</strong> возврат в главное меню.</li>
+          </ul>
+          <p>Список разрешений формируется из распространенных размеров, не превышающих размер экрана.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Игровая сцена (main.tscn)</h2>
+        <div class="card">
+          <ul>
+            <li><code>WorldMap</code> и <code>WorldObjects</code> отображают карту и объекты (TileMap).</li>
+            <li><code>Player</code> отвечает за движение и отправку позиционных пакетов.</li>
+            <li><code>Ui</code> содержит админское меню и панели редакторов.</li>
+            <li><code>LoadingOverlay</code> показывает загрузочный экран до полной синхронизации.</li>
           </ul>
         </div>
       </section>
 
       <section class="section">
-        <h2>Системы клиента</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>Net</h3>
-            <p>UDP-обмен, маршрутизация пакетов, контроль частоты.</p>
-          </div>
-          <div class="card">
-            <h3>WorldStream</h3>
-            <p>Запрос чанков и сущностей по версии, поддержка кэша.</p>
-          </div>
-          <div class="card">
-            <h3>EntityRegistry</h3>
-            <p>Реестр сущностей: ресурсы, объекты, NPC, игроки.</p>
-          </div>
-          <div class="card">
-            <h3>Render Layers</h3>
-            <p>Раздельные визуальные слои: terrain, resources, objects, npc. Объекты рисуются отдельным TileMap <code>WorldObjects</code>.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Синхронизация игроков и плавность</h2>
+        <h2>Сеть и протокол</h2>
         <div class="card">
-          <p>Синхронизация позиций идет через <code>Player.gd</code> по UDP: клиент отправляет пакеты <code>id|name|x|y|appearance</code> с частотой <code>send_rate_hz</code>, сервер отвечает широковещательным списком активных игроков.</p>
+          <p>Клиент общается с сервером через UDP-сообщения:</p>
+          <pre><code>PING
+REGISTER|name|password|appearance
+LOGIN|name|password
+id|name|x|y|appearance
+CHUNK|cx|cy|lastVersion
+EDIT|{...}
+OBJECTS|cx|cy|lastVersion
+OBJECT_EDIT|{...}</code></pre>
           <ul>
-            <li><strong>remote_timeout_sec</strong> — время, через которое удаленный игрок считается отключившимся. Благодаря таймауту игроки не исчезают между редкими апдейтами.</li>
-            <li><strong>RemotePlayer.gd</strong> использует буфер с задержкой <code>interpolation_delay_ms</code> и линейную интерполяцию между двумя последними апдейтами; <code>snap_distance</code> отвечает за мгновенный «телепорт» при резком рассинхроне.</li>
-            <li><strong>acceleration</strong> и <strong>deceleration</strong> в <code>Player.gd</code> сглаживают старт/остановку локального игрока, убирая резкие рывки.</li>
-            <li>Если требуется еще более плавное движение, увеличивайте <code>send_rate_hz</code> и слегка поднимайте <code>interpolation_delay_ms</code>, чтобы сгладить джиттер.</li>
-          </ul>
-          <p>Локальный игрок двигается сразу, а удаленные — с плавной догоняющей интерполяцией, чтобы убрать «мигание» и рывки между пакетами.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Создание персонажа</h2>
-        <div class="card">
-          <p>Форма Create Player включает выбор внешности и живое превью сборки paperdoll.</p>
-          <ul>
-            <li>Пол: Male / Female (влияет на набор волос).</li>
-            <li>Body: 3 варианта (1-3).</li>
-            <li>Head: 20 форм (1-20).</li>
-            <li>Hair: 10 вариантов (1-10) для мужских и женских атласов.</li>
-            <li>Eyes, Nose, Mouth, Beard: по 10 вариантов (1-10).</li>
-          </ul>
-          <p>Слои превью собираются в порядке: body → head → eyes → nose → mouth → beard → hair.</p>
-          <p>Выбранная внешность сериализуется в base64 JSON и синхронизируется с сервером при регистрации и в игровых пакетах.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Модульные спрайты персонажа</h2>
-        <div class="card">
-          <p>Все атласы формата 64×128 px, прозрачный фон, pivot: bottom-center. Элементы совпадают по позиции, чтобы любой набор корректно совмещался.</p>
-          <ul>
-            <li>body_skinny.png, body_normal.png, body_fat.png — по 6 кадров анимации (сетка 6×1) с руками по умолчанию.</li>
-            <li>heads.png — 20 форм, каждая по 6 кадров (сетка 6×20).</li>
-            <li>hair_male.png, hair_female.png — 10 форм, каждая по 6 кадров (сетка 6×10).</li>
-            <li>beards.png, eyes.png, noses.png, mouths.png — 10 форм, каждая по 6 кадров (сетка 6×10).</li>
-          </ul>
-          <p>Количество кадров совпадает для всех слоев: 6. Индекс кадра общий на все слои.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Анимации персонажа</h2>
-        <div class="card">
-          <p>В игре используется paperdoll-рендер. При движении персонажа анимация проигрывается по 6 кадрам, направление определяется по движению влево/вправо.</p>
-          <ul>
-            <li>Слой тела содержит руки по умолчанию.</li>
-            <li>Анимация синхронизирована: все слои используют общий кадр.</li>
-            <li>Персонаж зеркалится по X при движении влево.</li>
+            <li><strong>appearance</strong> - base64 JSON с внешностью, передается при регистрации/входе и в позиционных пакетах.</li>
+            <li><strong>CHUNK</strong> и <strong>OBJECTS</strong> возвращают JSON-снимки только при изменении версии.</li>
           </ul>
         </div>
       </section>
 
       <section class="section">
-        <h2>Синхронизация внешности</h2>
+        <h2>Внешность персонажа</h2>
         <div class="card">
-          <p>Сервер хранит внешний вид в аккаунте и рассылает его вместе с позициями игроков.</p>
+          <p>Модуль <code>CharacterAppearance.gd</code> собирает paperdoll по наборам атласов:</p>
           <ul>
-            <li>REGISTER|name|password|appearance (appearance = base64 JSON).</li>
-            <li>LOGIN ответ: OK|x|y|accessLevel|appearance (если есть).</li>
-            <li>Пакет позиции: id|name|x|y|appearance (appearance опционален).</li>
+            <li>Тело: <code>body_skinny.png</code>, <code>body_normal.png</code>, <code>body_fat.png</code>.</li>
+            <li>Головы, волосы, бороды, лицо: отдельные атласы с 6 кадрами анимации.</li>
+            <li>Настройки внешности сохраняются как base64 JSON в аккаунте.</li>
           </ul>
         </div>
       </section>
 
       <section class="section">
-        <h2>Потоки данных</h2>
-        <div class="card">
-          <p>Основные сценарии синхронизации:</p>
-          <pre><code>LOGIN -> OK -> spawn игрока
-Движение -> SEND id|name|x|y -> получение списка игроков
-CHUNK|cx|cy|ver -> обновление карты
-RESOURCES|cx|cy|ver -> ресурсы в чанке
-OBJECTS|cx|cy|ver -> объекты в чанке
-OBJECT_EDIT|{...} -> админ размещает объекты
-NPCS|cx|cy|ver -> NPC в чанке</code></pre>
-          <p>Клиент обновляет локальную копию только по ответам сервера.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Загрузочный экран и готовность игрока</h2>
-        <div class="card">
-          <p>При входе в игру показывается полноэкранный оверлей <code>Ui/LoadingOverlay</code> в сцене <code>main.tscn</code>.</p>
-          <ul>
-            <li><strong>Картинка:</strong> <code>res://ui/loading_screen.png</code> — обычный PNG, можно менять без кода.</li>
-            <li><strong>Прогресс:</strong> <code>Ui/LoadingOverlay/LoadingProgress</code> отображает загрузку стартовых чанков карты и объектов.</li>
-          </ul>
-          <p>Главное меню использует фон <code>res://ui/main_menu_bg.png</code>; можно заменить файл на другой PNG без изменения сцены.</p>
-          <p>Загрузка считается завершенной, когда оба слоя отчитались о готовности:</p>
-          <ul>
-            <li><code>WorldMap.gd</code> и <code>WorldObjects.gd</code> считают стартовый радиус чанков (по <code>VIEW_DISTANCE_CHUNKS</code>), отслеживают получение ответов и испускают сигналы <code>initial_load_progress</code> и <code>initial_load_completed</code>.</li>
-            <li><code>Main.gd</code> подписывается на сигналы, считает общий процент и держит минимальную задержку <code>MIN_LOADING_TIME_SEC</code>, чтобы у клиента было время на загрузку.</li>
-          </ul>
-          <p>Пока загрузка активна, <code>Player.gd</code> блокирует движение и сеть через <code>set_loading_blocked(true)</code>. Экран держится минимум до подтверждения от сервера: клиент получает широковещательный список игроков с собственным <code>id</code>. Это предотвращает раннюю рассылку позиции до полной готовности мира, а сервер держит такого игрока как <code>id="login"</code> и не показывает другим.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Стриминг и кэш чанков</h2>
+        <h2>Редакторы карты и объектов</h2>
         <div class="card">
           <ul>
-            <li>Радиус видимости задается настройкой (например, 5x5 чанков).</li>
-            <li>Клиент хранит кэш чанков по версии, не перерисовывает без изменений.</li>
-            <li>Выход из радиуса — чанк выгружается из памяти и освобождает спрайты.</li>
-          </ul>
-          <p>Кэш — это копия, источник истины всегда сервер.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Стриминг объектов</h2>
-        <div class="card">
-          <ul>
-            <li>Слой <code>WorldObjects</code> запрашивает <code>OBJECTS|cx|cy|lastVersion</code> по видимому радиусу.</li>
-            <li>Сервер возвращает только изменившиеся чанки объектов по версии.</li>
-            <li>Локально хранится список позиций объектов в чанке, чтобы очищать старые спрайты при обновлении.</li>
-            <li>Pending-изменения повторно накладываются поверх свежего ответа.</li>
+            <li>Админская кнопка открывает меню редакторов внутри игры.</li>
+            <li>Редактор карты использует <code>TilePalette.gd</code>, отправляет <code>EDIT</code> при сохранении.</li>
+            <li>Редактор объектов использует <code>ObjectPalette.gd</code>, отправляет <code>OBJECT_EDIT</code>.</li>
+            <li>Локальные правки накапливаются и отправляются одной пачкой.</li>
           </ul>
         </div>
       </section>
 
       <section class="section">
-        <h2>Ресурсы, объекты, NPC (отображение)</h2>
-        <div class="card">
-          <p>Каждый тип сущности имеет свой визуальный контроллер.</p>
-          <pre><code>ResourceView
-- спрайт по typeId
-- эффекты добычи
-
-ObjectView
-- статическая модель/спрайт
-- интерактивная подсветка
-
-NpcView
-- анимации состояния
-- индикаторы здоровья</code></pre>
-          <p>Для стен используются отдельные атласы: <code>object_wood_wall.png</code> и <code>object_stone_wall.png</code> (4 направления в ряд). Палитра выбора — <code>objects_palette.png</code>.</p>
-          <p>Состояние приходит с сервера и применяется в Registry.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Поведение при разрыве</h2>
+        <h2>Данные и ассеты</h2>
         <div class="card">
           <ul>
-            <li>Клиент сохраняет последнюю позицию камеры и UI.</li>
-            <li>После переподключения заново запрашивает чанки по версии 0.</li>
-            <li>Старые сущности очищаются перед полной синхронизацией.</li>
+            <li><code>data/object_types.json</code> описывает список типов объектов для палитры.</li>
+            <li>Текстуры меню и загрузки: <code>ui/main_menu_bg.png</code>, <code>ui/loading_screen.png</code>.</li>
+            <li>Тайлы мира и объектов: <code>tiles/terrain.png</code>, <code>tiles/objects.png</code>.</li>
           </ul>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Интеракции игрока</h2>
-        <div class="card">
-          <ul>
-            <li>Клик/клавиша формирует запрос на сервер (добыча, использовать объект).</li>
-            <li>Сервер подтверждает действие и присылает обновление состояния.</li>
-            <li>Клиент не применяет изменения без подтверждения.</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Админский редактор карты</h2>
-        <div class="card">
-          <ul>
-            <li>Вход: Admin -> Map Editor включает режим редактирования для <code>WorldMap</code>.</li>
-            <li>Выбор тайла через <code>TilePalette</code>, клик по карте меняет тайл локально.</li>
-            <li>Локальные правки складируются в <code>_pending_changes</code> и не уходят на сервер сразу.</li>
-            <li>Кнопка "Сохранить" отправляет пакет <code>EDIT</code> с массивом изменений.</li>
-            <li>Кнопка "Назад" очищает pending и запрашивает чанки заново, возвращая карту к состоянию сервера.</li>
-          </ul>
-          <p>Кнопка "Удалить" ставит пустой тайл (tile = -1) и удаляет его с карты.</p>
-          <p>Если в редакторе приходят ответы чанков, клиент повторно применяет pending-тайлы поверх обновления, чтобы не потерять локальные правки до сохранения.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Админский редактор объектов</h2>
-        <div class="card">
-          <ul>
-            <li>Вход: Admin -> "Размещение объектов" включает режим редактирования для <code>WorldObjects</code>.</li>
-            <li>Выбор объекта через <code>ObjectPalette</code>: строки задаются <code>paletteRow</code>, колонка задает направление (0-3).</li>
-            <li>ЛКМ по карте ставит объект локально, изменения накапливаются в <code>_pending_changes</code>.</li>
-            <li>Кнопка "Сохранить" отправляет пакет <code>OBJECT_EDIT</code> с массивом объектов.</li>
-            <li>Кнопка "Назад" сбрасывает pending и заново запрашивает объекты по чанкам.</li>
-          </ul>
-          <p>Типы объектов описаны в <code>data/object_types.json</code>. Направления совпадают с сервером: 0 = север, 1 = восток, 2 = юг, 3 = запад.</p>
-          <p>Объекты с <code>isBlocking=true</code> получают коллизии и становятся непроходимыми.</p>
-          <p>Кнопка "Удалить" включает удаление объекта (на сервер уходит <code>typeId="__remove__"</code>).</p>
-          <p>Кнопка размещения объектов находится под кнопкой редактора карты в админском меню.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Локальные JSON</h2>
-        <div class="card">
-          <p>Используются только для:</p>
-          <ul>
-            <li>настроек клиента (последний адрес сервера, громкость);</li>
-            <li>кэша UI (последняя вкладка и т.п.).</li>
-          </ul>
-          <p><code>data/object_types.json</code> хранит характеристики типов объектов (текстуры, блокировка, палитра).</p>
-          <p>Локальные JSON никогда не меняют состояние мира.</p>
         </div>
       </section>
 
       <section class="section note">
-        <h2>Примечание для развития</h2>
+        <h2>Обновление документации</h2>
         <p>
-          Этот документ описывает структуру. Перед добавлением новой системы
-          обновляй <code>docs_client.html</code> и фиксируй изменения в <code>ver_client.html</code>.
+          При изменениях клиента обновляй <code>docs_client.html</code> и фиксируй
+          версию в <code>ver_client.html</code> (v0.000 / дата / список изменений).
         </p>
       </section>
 
       <footer>
-        <p>Документация структуры клиента. Основа для дальнейшей реализации.</p>
+        <p>Документация клиента. Держи синхронно с фактическим состоянием проекта.</p>
       </footer>
     </div>
   </body>

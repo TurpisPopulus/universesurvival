@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
@@ -163,288 +163,144 @@
     <div class="page">
       <header>
         <div class="brand">Universe Survival Server</div>
-        <div class="tag">Структура · RAM-first</div>
+        <div class="tag">C# · UDP</div>
       </header>
 
       <section class="hero">
-        <h1>Сервер: только структура, масштабируемо</h1>
+        <h1>Сервер: UDP, RAM-first, стабильный контракт</h1>
         <p>
-          Эта документация описывает <strong>каркас сервера</strong>. Истина всегда в RAM:
-          JSON используется <strong>только</strong> как хранение и резервные снимки.
-          Реализация функций может отличаться, но структура и контракт остаются стабильными.
+          Сервер держит всю игровую симуляцию в памяти. JSON используется
+          только как сохранение и восстановление состояния. Клиент получает
+          актуальные данные через версии чанков и диффы.
         </p>
         <div class="grid">
           <div class="card">
-            <h3>Главный принцип</h3>
-            <p><span class="pill">RAM = truth</span> Все игровые данные живут в памяти.</p>
+            <h3>RAM = истина</h3>
+            <p><span class="pill">RAM-first</span> Все данные редактируются только в памяти.</p>
           </div>
           <div class="card">
-            <h3>JSON</h3>
-            <p>Снимки, импорт/экспорт, резерв. Не используется как источник истины.</p>
+            <h3>UDP протокол</h3>
+            <p>Минимальный набор команд: вход, карты, объекты, позиционные пакеты.</p>
           </div>
           <div class="card">
-            <h3>Сущности</h3>
-            <p>Ресурсы, объекты, NPC вынесены в отдельные регистры и слои.</p>
+            <h3>Версии чанков</h3>
+            <p>CHUNK/OBJECTS возвращают данные только при изменении версии.</p>
           </div>
         </div>
       </section>
 
       <section class="section">
-        <h2>Архитектурные принципы</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>Серверная авторитетность</h3>
-            <p>Сервер единственный, кто изменяет состояние мира. Клиент только запрашивает и предлагает.</p>
-          </div>
-          <div class="card">
-            <h3>Версионирование</h3>
-            <p>Все слои мира имеют версию: чанки карты, сущности и события синхронизируются по версиям.</p>
-          </div>
-          <div class="card">
-            <h3>Масштабируемость</h3>
-            <p>Мир делится на чанки и зоны; сущности адресуются по чанку.</p>
-          </div>
-          <div class="card">
-            <h3>Снимки</h3>
-            <p>Снимки пишутся пакетно и атомарно, без блокировки игры.</p>
-          </div>
+        <h2>Запуск</h2>
+        <div class="card">
+          <ul>
+            <li>Старт через <code>server/run_server.bat</code> или <code>dotnet run</code>.</li>
+            <li>Порт по умолчанию: <code>7777</code>, можно передать в аргументах запуска.</li>
+            <li>Данные сохраняются в <code>server/bin/Debug/net10.0/Data</code> (или рядом с exe).</li>
+          </ul>
         </div>
       </section>
 
       <section class="section">
-        <h2>План структуры проекта</h2>
-        <p>Текущая структура может отличаться. Ниже эталон для развития.</p>
+        <h2>Файлы и структура</h2>
         <pre><code>server/
-  Program.cs                # точка входа, UDP loop, маршрутизация
-  Net/                       # сетевой слой и протокол
-    Packets/
-    Handlers/
-  Domain/
-    World/                   # карта, чанки, слои, правила
-    Resources/               # добываемые ресурсы
-    Objects/                 # размещаемые объекты
-    NPC/                     # монстры, животные, ИИ
-    Players/                 # игроки, сессии, доступы
-  Persistence/
-    Snapshots/               # сборка снимков, сериализация JSON
-    Import/                  # загрузка JSON при старте
-  Config/
-    server.json              # конфиг сервера (порт, интервалы)
-  Data/                      # runtime snapshots, не в коде
-    players.json
+  Program.cs               # основной файл сервера
+  run_server.bat           # запуск
+  object_types.json        # каталог типов объектов
+  accounts.json            # аккаунты (пароли + доступ)
+  players.json             # состояния игроков
+  Data/
+    chunk_*.json            # чанки карты
+    objects_*.json          # чанки объектов
     accounts.json
-    chunk_*.json
-    resources_*.json
-    objects_*.json
-    npcs_*.json</code></pre>
+    players.json</code></pre>
       </section>
 
       <section class="section">
-        <h2>Модель мира</h2>
+        <h2>Главный цикл и тики</h2>
         <div class="card">
-          <p><strong>Чанки:</strong> сетка чанков, стандартно 100x100 тайлов.</p>
-          <p><strong>Слои:</strong> terrain, resources, objects, npc, overlays (эффекты).</p>
-          <p><strong>Версии:</strong> каждый чанк имеет версию для диффов.</p>
-          <p><strong>Адресация:</strong> (cx, cy) + локальные координаты (x, y).</p>
-          <p><strong>Границы:</strong> одна сущность не может находиться сразу в двух чанках.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Единая форма сущности (RAM)</h2>
-        <div class="card">
-          <p>Все игровые сущности наследуют общий минимум полей.</p>
-          <pre><code>EntityBase
-- entityId: string          # уникальный id в мире
-- typeId: string            # тип из каталога (ResourceType/ObjectType/NpcType)
-- chunkId: (cx, cy)
-- position: (x, y)
-- stateVersion: int
-- tags: string[]
-- flags: bitmask
-- ownerId: string?          # для приватных объектов
-- createdUtc: DateTime
-- updatedUtc: DateTime</code></pre>
-          <p>Изменения увеличивают <code>stateVersion</code>, чтобы клиент мог синхронизироваться по диффам.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Ресурсы (добываемые)</h2>
-        <div class="card">
-          <p>Ресурс - объект мира, который можно добывать (дерево, камень, руда).</p>
-          <pre><code>ResourceNode : EntityBase
-- hitPoints: int
-- maxHitPoints: int
-- regenSeconds: int
-- lootTableId: string
-- state: alive | depleted
-- respawnUtc: DateTime?</code></pre>
-          <p>Поведение:</p>
           <ul>
-            <li>Добыча уменьшает HP, при нуле ресурс исчезает.</li>
-            <li>После respawnSeconds появляется снова, получает новую версию.</li>
-            <li>Вещи, полученные с ресурса, формируются на сервере.</li>
+            <li>UDP слушает входящие пакеты и обрабатывает команды.</li>
+            <li>Позиции рассылются по таймеру <code>broadcastInterval</code> (33 мс, 30 Гц).</li>
+            <li>Периодически сохраняются аккаунты и «грязные» чанки карты/объектов.</li>
           </ul>
+          <p>Рассылка идет только активным игрокам (окно активности 10 секунд).</p>
         </div>
       </section>
 
       <section class="section">
-        <h2>Объекты (размещаемые)</h2>
+        <h2>Протокол</h2>
         <div class="card">
-          <p>Объекты - статические конструкции: стены, заборы, колодцы, стулья.</p>
-          <pre><code>WorldObject : EntityBase
-- durability: int
-- maxDurability: int
-- interactionId: string?    # открыть, включить, использовать
-- storageId: string?        # контейнер
-- isBlocking: bool
-- rotation: int             # 0-3
-- ownerGroupId: string?</code></pre>
-          <p>Поведение:</p>
-          <ul>
-            <li>Объекты могут быть интерактивными (дверь/контейнер).</li>
-            <li>Разрушение приводит к луту и очистке объекта.</li>
-            <li>Размещение валидируется по правилам (коллизии, зона).</li>
-            <li>Базовые типы стен: <code>wall_wood</code>, <code>wall_stone</code> (оба блокируют проход).</li>
-            <li>Характеристики типов объектов читаются из <code>object_types.json</code> (включая <code>isBlocking</code>).</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Хранение объектов (objects_*.json)</h2>
-        <div class="card">
-          <p>Объекты сохраняются отдельно от terrain-чанков. Каждый чанк объектов — отдельный файл в <code>Data/</code>, масштабируется по мере роста мира.</p>
-          <p>Справочник типов объектов хранится в <code>object_types.json</code> рядом с сервером (описание, блокировка и др.).</p>
-          <pre><code>{
-  "x": 0,
-  "y": 0,
-  "version": 12,
-  "objects": [
-    {
-      "entityId": "f3bca0c91a5d4b4bb4f73d0d5b9b8e2f",
-      "typeId": "wall_wood",
-      "x": 150,
-      "y": 210,
-      "rotation": 1,
-      "isBlocking": true,
-      "createdUtc": "2026-01-09T12:00:00Z",
-      "updatedUtc": "2026-01-09T12:00:00Z"
-    }
-  ]
-}</code></pre>
-          <ul>
-            <li><strong>x</strong>, <strong>y</strong> в корне файла — координаты чанка объектов.</li>
-            <li><strong>objects[].x/y</strong> — абсолютные координаты тайлов на серверной сетке.</li>
-            <li><strong>version</strong> растет при любом изменении объекта в чанке.</li>
-            <li><strong>isBlocking</strong> заполняется сервером по типу объекта.</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>NPC (монстры, животные)</h2>
-        <div class="card">
-          <p>NPC управляются серверной симуляцией и AI.</p>
-          <pre><code>Npc : EntityBase
-- brainId: string
-- health: int
-- maxHealth: int
-- aggression: passive | neutral | hostile
-- patrolPathId: string?
-- targetEntityId: string?
-- lootTableId: string?</code></pre>
-          <p>Поведение:</p>
-          <ul>
-            <li>AI запускается по тикам и обновляет состояние NPC.</li>
-            <li>Смерть NPC создает лут и таймер респавна.</li>
-            <li>Перемещение фиксируется на сервере, клиент получает позиции.</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Каталоги типов (данные контента)</h2>
-        <div class="card">
-          <p>Каталоги описывают свойства типов (не экземпляров). Загружаются при старте в RAM.</p>
-          <pre><code>ResourceType
-- typeId, displayName, iconId
-- hitPoints, regenSeconds, lootTableId
-
-ObjectType
-- typeId, displayName, iconId
-- durability, isBlocking, interactionId
-
-NpcType
-- typeId, displayName, modelId
-- health, aggression, brainId</code></pre>
-          <p>Каталоги могут храниться в JSON, но после старта всегда живут в RAM.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Сетевой контракт</h2>
-        <div class="card">
-          <p>Протокол минимальный, UDP. Команды расширяются, но формат един:</p>
           <pre><code>PING
 REGISTER|name|password|appearance
 LOGIN|name|password
 OK|x|y|accessLevel|appearance
 ERR|code
 
+id|name|x|y|appearance
 CHUNK|cx|cy|lastVersion
 EDIT|{...}
-
-RESOURCES|cx|cy|lastVersion
 OBJECTS|cx|cy|lastVersion
-OBJECT_EDIT|{...}
-NPCS|cx|cy|lastVersion</code></pre>
-          <p>appearance — base64 JSON с внешностью (может отсутствовать).</p>
-          <p>Сервер рассылает список игроков в формате: id|name|x|y|appearance.</p>
-          <p>Если клиент присылает appearance в позиционном пакете, сервер обновляет его в аккаунте.</p>
-          <p>Активность игроков определяется окном <code>activeWindowSec</code> (по умолчанию 10 секунд).</p>
-          <p>Периодическая рассылка выполняется с фиксированным тиком <code>broadcastInterval</code> (по умолчанию 33 мс, 30 Гц), чтобы сгладить неравномерные входящие апдейты.</p>
-          <p>Логи обновлений игроков троттлятся: запись в консоль идет не чаще одного раза в секунду на игрока, координаты логируются в invariant-формате (через точку).</p>
-          <p>Ответы на новые запросы будут JSON-снимками по версиям.</p>
-          <p>UDP на Windows может отдавать <code>SocketError.ConnectionReset</code> при ICMP "port unreachable" (например, если клиент уже закрыл порт). Такие события игнорируются и не считаются ошибкой сервера.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Готовность клиента и окно активности</h2>
-        <div class="card">
-          <p>Сервер считает игрока активным только после получения позиционных пакетов. LOGIN резервирует имя и возвращает стартовые координаты, но дальнейшая активность зависит от входящих апдейтов.</p>
+OBJECT_EDIT|{...}</code></pre>
           <ul>
-            <li>Клиент должен начинать отправку позиций после полной загрузки мира (карта и объекты), чтобы другие игроки не видели частично загруженного клиента.</li>
-            <li>Если апдейты не приходят дольше <code>activeWindowSec</code>, игрок считается неактивным и удаляется из рассылки.</li>
-            <li>До первого позиционного пакета сервер держит игрока в состоянии <code>id="login"</code> и не включает его в широковещательные обновления.</li>
-          </ul>
-          <p>Такой подход позволяет клиенту показывать загрузочный экран и запускать игру только после готовности.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>EDIT: изменения карты</h2>
-        <div class="card">
-          <p>Команда <code>EDIT</code> используется админским клиентом для изменения карты. Сервер применяет изменения сразу и увеличивает версию чанка.</p>
-          <pre><code>EDIT|{"changes":[{"x":123,"y":456,"tile":2}]}</code></pre>
-          <ul>
-            <li><strong>x</strong>, <strong>y</strong> - координаты тайла на серверной сетке.</li>
-            <li><strong>tile</strong> - id тайла из tileset.</li>
-            <li>Клиент группирует локальные правки и отправляет их только при нажатии "Сохранить".</li>
-            <li>Отмена правок выполняется на клиенте повторным запросом чанков.</li>
+            <li><strong>appearance</strong> - base64 JSON с внешностью (может отсутствовать).</li>
+            <li><strong>id|name|x|y|appearance</strong> - позиционный пакет, рассылается всем.</li>
+            <li><strong>CHUNK</strong> и <strong>OBJECTS</strong> возвращают JSON только при росте версии.</li>
           </ul>
         </div>
       </section>
 
       <section class="section">
-        <h2>OBJECTS: запрос объектов в чанке</h2>
+        <h2>Аккаунты и вход</h2>
         <div class="card">
-          <p>Клиент запрашивает слой объектов по версии. Сервер возвращает снимок только если версия изменилась.</p>
-          <pre><code>OBJECTS|cx|cy|lastVersion</code></pre>
-          <p>Ответ:</p>
-          <pre><code>{
+          <ul>
+            <li>Аккаунты хранятся в <code>accounts.json</code> (хэш + соль PBKDF2).</li>
+            <li>При старых данных допускается миграция с plaintext пароля.</li>
+            <li>После <code>LOGIN</code> сервер возвращает позицию, accessLevel и appearance.</li>
+          </ul>
+          <p>Имя считается занятым, если игрок активен в окне <code>activeWindowSec</code>.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Состояние игроков</h2>
+        <div class="card">
+          <ul>
+            <li>Активность хранится в памяти: словарь игроков и endpoint.</li>
+            <li>До первого позиционного пакета игрок помечен как <code>id="login"</code> и не рассылается.</li>
+            <li>Рассылка выполняется равномерным тиком, а не по входящим пакетам.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Карта (chunks)</h2>
+        <div class="card">
+          <ul>
+            <li>Размер чанка: 100x100 тайлов.</li>
+            <li>Команда <code>CHUNK|cx|cy|lastVersion</code> возвращает снимок при росте версии.</li>
+            <li><code>EDIT</code> принимает массив изменений и увеличивает версию чанка.</li>
+          </ul>
+          <pre><code>// chunk_0_0.json
+{
+  "x": 0,
+  "y": 0,
+  "version": 12,
+  "tiles": [0, 1, 2, "..."]
+}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Объекты</h2>
+        <div class="card">
+          <ul>
+            <li>Каталог типов объектов: <code>object_types.json</code> (typeId, displayName, isBlocking).</li>
+            <li><code>OBJECTS|cx|cy|lastVersion</code> возвращает объекты чанка по версии.</li>
+            <li><code>OBJECT_EDIT</code> применяет изменения и повышает версию чанка объектов.</li>
+            <li>Удаление объекта: <code>typeId="__remove__"</code>.</li>
+          </ul>
+          <pre><code>// objects_0_0.json
+{
   "x": 0,
   "y": 0,
   "version": 12,
@@ -456,125 +312,26 @@ NPCS|cx|cy|lastVersion</code></pre>
       </section>
 
       <section class="section">
-        <h2>OBJECT_EDIT: размещение объектов</h2>
-        <div class="card">
-          <p>Админский клиент отправляет набор изменений. Сервер валидирует тип, применяет upsert по координатам тайла и увеличивает версию чанка объектов.</p>
-          <pre><code>OBJECT_EDIT|{"changes":[{"x":123,"y":456,"typeId":"wall_wood","rotation":1}]}</code></pre>
-          <ul>
-            <li><strong>x</strong>, <strong>y</strong> — координаты тайла на серверной сетке.</li>
-            <li><strong>typeId</strong> — id типа объекта (например, <code>wall_wood</code>).</li>
-            <li><strong>rotation</strong> — направление 0-3 (0 = север, 1 = восток, 2 = юг, 3 = запад).</li>
-            <li>Повторная установка на тех же координатах обновляет объект (без дубликатов).</li>
-            <li>Сервер проставляет <strong>isBlocking</strong> по данным <code>object_types.json</code>.</li>
-            <li>Для удаления используется <code>typeId="__remove__"</code> (объект по координатам удаляется).</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Идентификаторы и версии</h2>
+        <h2>Сохранение и атомарные записи</h2>
         <div class="card">
           <ul>
-            <li><strong>entityId</strong> — уникален в пределах всего мира.</li>
-            <li><strong>typeId</strong> — привязка к каталогу типов, стабильный ключ.</li>
-            <li><strong>stateVersion</strong> — увеличивается при каждом изменении сущности.</li>
-            <li><strong>chunkVersion</strong> — версия слоя в чанке (terrain/resources/objects/npcs).</li>
+            <li>Игроки и аккаунты пишутся на диск периодически и при завершении.</li>
+            <li>Чанки карты и объектов сохраняются только при <code>IsDirty=true</code>.</li>
+            <li>Запись в JSON выполняется атомарно через временный файл.</li>
           </ul>
-          <p>Версии используются для диффов: клиент запрашивает изменения с последней версии.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Формат JSON-снимков (хранение)</h2>
-        <div class="card">
-          <p>Снимки пишутся на диск, но после загрузки живут только в RAM.</p>
-          <pre><code>// chunk_0_0.json
-{
-  "x": 0,
-  "y": 0,
-  "version": 12,
-  "tiles": [0, 1, 2, "..."]
-}</code></pre>
-          <pre><code>// objects_0_0.json
-{
-  "x": 0,
-  "y": 0,
-  "version": 12,
-  "objects": [
-    { "entityId": "obj-0100", "typeId": "wall_wood", "x": 15, "y": 9, "rotation": 1, "isBlocking": true }
-  ]
-}</code></pre>
-          <p>Каждый слой хранится отдельно, что упрощает масштабирование и частичное обновление.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Снимки и хранение</h2>
-        <div class="card">
-          <p>Снимки пишутся периодически или при завершении сервера.</p>
-          <ul>
-            <li>JSON хранит только копию RAM.</li>
-            <li>Каждый слой имеет отдельные файлы: чанки карты, ресурсы, объекты, NPC.</li>
-            <li>Сохранение атомарное: через временный файл.</li>
-            <li>Загрузка восстанавливает RAM, но не считается источником истины.</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Тики и симуляция</h2>
-        <div class="card">
-          <p>Сервер работает в несколько циклов:</p>
-          <ul>
-            <li>Network Tick: прием/отправка UDP.</li>
-            <li>World Tick: NPC, реген ресурсов, таймеры.</li>
-            <li>Persistence Tick: сохранение грязных данных.</li>
-          </ul>
-          <p>Все тики изменяют данные только через RAM-структуры.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Конфигурация</h2>
-        <div class="card">
-          <p>Все параметры сервера задаются через конфиг и не требуют перекомпиляции.</p>
-          <pre><code>{
-  "port": 7777,
-  "saveIntervalSec": 300,
-  "chunkSaveIntervalSec": 30,
-  "activeWindowSec": 10,
-  "world": {
-    "chunkSize": 100,
-    "viewRadius": 2
-  }
-}</code></pre>
-          <p>Конфиг грузится в RAM и применяется ко всем подсистемам.</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2>Валидация и доступы</h2>
-        <div class="card">
-          <p>Сервер проверяет:</p>
-          <ul>
-            <li>Права изменения мира (уровни доступа).</li>
-            <li>Коллизии при размещении объектов.</li>
-            <li>Диапазоны координат и частоту пакетов.</li>
-          </ul>
-          <p>Клиентские данные не считаются достоверными.</p>
         </div>
       </section>
 
       <section class="section note">
-        <h2>Примечание для развития</h2>
+        <h2>Правило обновления документации</h2>
         <p>
-          Документ описывает структуру. При реализации новых модулей сначала обновляй
-          этот файл, затем добавляй код и фиксируй версию в <code>ver_server.html</code>.
+          Любые изменения на стороне сервера должны быть отражены в этом файле
+          и добавлены в <code>ver_server.html</code> с увеличением версии на 0.001.
         </p>
       </section>
 
       <footer>
-        <p>Документация структуры сервера. Основа для дальнейшей реализации.</p>
+        <p>Документация сервера. Держи структуру и протокол синхронно с кодом.</p>
       </footer>
     </div>
   </body>

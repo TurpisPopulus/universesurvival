@@ -281,6 +281,106 @@ text = "Enter"
 [node name="LoginBack" type="Button" parent="LoginOverlay/LoginPanel/LoginVBox/Buttons"]
 text = "Back"
 
+[node name="SettingsOverlay" type="CenterContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+visible = false
+
+[node name="SettingsPanel" type="PanelContainer" parent="SettingsOverlay"]
+custom_minimum_size = Vector2(640, 0)
+
+[node name="SettingsMargin" type="MarginContainer" parent="SettingsOverlay/SettingsPanel"]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="SettingsVBox" type="VBoxContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin"]
+theme_override_constants/separation = 16
+
+[node name="SettingsTitle" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox"]
+text = "Настройки"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+
+[node name="SettingsBody" type="HBoxContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox"]
+theme_override_constants/separation = 16
+
+[node name="SettingsMenu" type="VBoxContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody"]
+custom_minimum_size = Vector2(160, 0)
+theme_override_constants/separation = 8
+
+[node name="VideoButton" type="Button" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsMenu"]
+text = "Видео"
+
+[node name="SoundButton" type="Button" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsMenu"]
+text = "Звук"
+
+[node name="AuthorsButton" type="Button" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsMenu"]
+text = "Авторы"
+
+[node name="SettingsBackButton" type="Button" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsMenu"]
+text = "Назад"
+
+[node name="SettingsContent" type="PanelContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody"]
+size_flags_horizontal = 3
+
+[node name="ContentMargin" type="MarginContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent"]
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="VideoPanel" type="VBoxContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin"]
+theme_override_constants/separation = 12
+
+[node name="VideoTitle" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel"]
+text = "Видео"
+theme_override_font_sizes/font_size = 18
+
+[node name="ResolutionRow" type="HBoxContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel"]
+theme_override_constants/separation = 8
+
+[node name="ResolutionLabel" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel/ResolutionRow"]
+text = "Разрешение"
+
+[node name="ResolutionOption" type="OptionButton" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel/ResolutionRow"]
+size_flags_horizontal = 3
+
+[node name="ModeRow" type="HBoxContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel"]
+theme_override_constants/separation = 8
+
+[node name="ModeLabel" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel/ModeRow"]
+text = "Режим"
+
+[node name="ModeOption" type="OptionButton" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel/ModeRow"]
+size_flags_horizontal = 3
+
+[node name="VideoNote" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel"]
+text = "Полный экран использует размер текущего монитора."
+
+[node name="SoundPanel" type="VBoxContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin"]
+visible = false
+theme_override_constants/separation = 12
+
+[node name="SoundTitle" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/SoundPanel"]
+text = "Звук"
+theme_override_font_sizes/font_size = 18
+
+[node name="SoundNote" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/SoundPanel"]
+text = "Пока пусто."
+
+[node name="AuthorsPanel" type="VBoxContainer" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin"]
+visible = false
+theme_override_constants/separation = 12
+
+[node name="AuthorsTitle" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/AuthorsPanel"]
+text = "Авторы"
+theme_override_font_sizes/font_size = 18
+
+[node name="AuthorsText" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/AuthorsPanel"]
+text = "Команда Universe Survival."
+
 [node name="ServerStatus" type="Label" parent="."]
 anchor_top = 1.0
 anchor_bottom = 1.0

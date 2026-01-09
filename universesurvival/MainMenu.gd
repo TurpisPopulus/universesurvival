@@ -58,11 +58,25 @@ const MOUTHS_ATLAS_PATH := "res://characters/mouths.png"
 @onready var login_ok: Button = $LoginOverlay/LoginPanel/LoginVBox/Buttons/LoginConfirm
 @onready var login_back: Button = $LoginOverlay/LoginPanel/LoginVBox/Buttons/LoginBack
 
+@onready var settings_overlay: CenterContainer = $SettingsOverlay
+@onready var settings_video_button: Button = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsMenu/VideoButton
+@onready var settings_sound_button: Button = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsMenu/SoundButton
+@onready var settings_authors_button: Button = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsMenu/AuthorsButton
+@onready var settings_back_button: Button = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsMenu/SettingsBackButton
+@onready var settings_video_panel: VBoxContainer = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel
+@onready var settings_sound_panel: VBoxContainer = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/SoundPanel
+@onready var settings_authors_panel: VBoxContainer = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/AuthorsPanel
+@onready var settings_resolution: OptionButton = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel/ResolutionRow/ResolutionOption
+@onready var settings_mode: OptionButton = $SettingsOverlay/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/VideoPanel/ModeRow/ModeOption
+
 var _status_check_in_flight := false
 var _appearance_textures := {}
 var _appearance_frame := 0
 var _appearance_anim_time := 0.0
 var _appearance_payload := ""
+var _resolution_options: Array[Vector2i] = []
+var _pending_windowed_size := Vector2i.ZERO
+var _updating_video_ui := false
 
 func _ready() -> void:
 	enter_button.pressed.connect(_on_enter_pressed)
@@ -73,13 +87,21 @@ func _ready() -> void:
 	create_back.pressed.connect(_on_create_back_pressed)
 	login_ok.pressed.connect(_on_login_confirm_pressed)
 	login_back.pressed.connect(_on_login_back_pressed)
+	settings_video_button.pressed.connect(_on_settings_video_pressed)
+	settings_sound_button.pressed.connect(_on_settings_sound_pressed)
+	settings_authors_button.pressed.connect(_on_settings_authors_pressed)
+	settings_back_button.pressed.connect(_on_settings_back_pressed)
+	settings_resolution.item_selected.connect(_on_resolution_selected)
+	settings_mode.item_selected.connect(_on_mode_selected)
 
 	_setup_appearance_ui()
+	_setup_video_settings()
 
-	settings_button.disabled = true
+	settings_button.disabled = false
 	enter_button.disabled = false
 	create_overlay.visible = false
 	login_overlay.visible = false
+	settings_overlay.visible = false
 	_set_menu_visible(true)
 	server_status.text = "Server: checking..."
 	status_timer.timeout.connect(_on_status_timer_timeout)
@@ -121,7 +143,10 @@ func _on_create_pressed() -> void:
 	create_overlay.visible = true
 
 func _on_settings_pressed() -> void:
-	pass
+	_set_menu_visible(false)
+	_sync_video_ui()
+	_show_settings_panel(settings_video_panel)
+	settings_overlay.visible = true
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()
@@ -192,6 +217,19 @@ func _on_login_confirm_pressed() -> void:
 
 func _on_login_back_pressed() -> void:
 	login_overlay.visible = false
+	_set_menu_visible(true)
+
+func _on_settings_video_pressed() -> void:
+	_show_settings_panel(settings_video_panel)
+
+func _on_settings_sound_pressed() -> void:
+	_show_settings_panel(settings_sound_panel)
+
+func _on_settings_authors_pressed() -> void:
+	_show_settings_panel(settings_authors_panel)
+
+func _on_settings_back_pressed() -> void:
+	settings_overlay.visible = false
 	_set_menu_visible(true)
 
 func _set_menu_visible(visible: bool) -> void:
@@ -314,6 +352,86 @@ func _build_appearance_payload() -> String:
 	}
 	var json := JSON.stringify(appearance)
 	return Marshalls.utf8_to_base64(json)
+
+func _setup_video_settings() -> void:
+	settings_mode.clear()
+	settings_mode.add_item("Окно", 0)
+	settings_mode.add_item("Полный экран", 1)
+	_refresh_resolution_list()
+	_sync_video_ui()
+
+func _refresh_resolution_list() -> void:
+	_resolution_options.clear()
+	var screen_size := DisplayServer.screen_get_size()
+	var common_resolutions := [
+		Vector2i(800, 600),
+		Vector2i(1024, 576),
+		Vector2i(1280, 720),
+		Vector2i(1366, 768),
+		Vector2i(1600, 900),
+		Vector2i(1920, 1080),
+		Vector2i(2560, 1440),
+		Vector2i(3840, 2160)
+	]
+	for res in common_resolutions:
+		if res.x <= screen_size.x and res.y <= screen_size.y:
+			_add_resolution_option(res)
+	var current_size := DisplayServer.window_get_size()
+	_add_resolution_option(current_size)
+	_resolution_options.sort_custom(func(a, b): return a.x * a.y < b.x * b.y)
+	settings_resolution.clear()
+	for res in _resolution_options:
+		settings_resolution.add_item("%dx%d" % [res.x, res.y])
+
+func _add_resolution_option(resolution: Vector2i) -> void:
+	for existing in _resolution_options:
+		if existing == resolution:
+			return
+	_resolution_options.append(resolution)
+
+func _find_resolution_index(resolution: Vector2i) -> int:
+	for i in _resolution_options.size():
+		if _resolution_options[i] == resolution:
+			return i
+	return -1
+
+func _sync_video_ui() -> void:
+	_updating_video_ui = true
+	_refresh_resolution_list()
+	var mode := DisplayServer.window_get_mode()
+	var is_fullscreen := mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+	settings_mode.select(1 if is_fullscreen else 0)
+	var current_size := DisplayServer.window_get_size()
+	var index := _find_resolution_index(current_size)
+	if index >= 0:
+		settings_resolution.select(index)
+	_pending_windowed_size = current_size
+	_updating_video_ui = false
+
+func _on_resolution_selected(index: int) -> void:
+	if _updating_video_ui:
+		return
+	if index < 0 or index >= _resolution_options.size():
+		return
+	var selected := _resolution_options[index]
+	_pending_windowed_size = selected
+	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED:
+		DisplayServer.window_set_size(selected)
+
+func _on_mode_selected(index: int) -> void:
+	if _updating_video_ui:
+		return
+	if index == 1:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		if _pending_windowed_size != Vector2i.ZERO:
+			DisplayServer.window_set_size(_pending_windowed_size)
+
+func _show_settings_panel(panel: Control) -> void:
+	settings_video_panel.visible = panel == settings_video_panel
+	settings_sound_panel.visible = panel == settings_sound_panel
+	settings_authors_panel.visible = panel == settings_authors_panel
 
 func _ping_server() -> bool:
 	var reply := await _send_request("PING")
