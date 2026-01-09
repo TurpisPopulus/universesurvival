@@ -12,6 +12,7 @@ extends CharacterBody2D
 @export var remote_scene: PackedScene = preload("res://remote_player.tscn")
 @export var appearance_payload: String = ""
 @export var resources_path: NodePath = NodePath("../WorldResources")
+@export var feet_block_tile_size: float = 32.0
 @onready var appearance: Node = get_node_or_null("Appearance")
 @onready var _collision_shape: CollisionShape2D = get_node_or_null("CollisionShape2D")
 
@@ -153,13 +154,10 @@ func _apply_resource_blocking(delta: float) -> void:
 	if velocity == Vector2.ZERO:
 		return
 	var next_pos = global_position + velocity * delta
-	var feet_next = _get_feet_at(next_pos)
-	if not _resources.is_world_blocked(feet_next):
+	if not _is_blocked_at(next_pos):
 		return
-	var try_x = _get_feet_at(Vector2(next_pos.x, global_position.y))
-	var try_y = _get_feet_at(Vector2(global_position.x, next_pos.y))
-	var allow_x = not _resources.is_world_blocked(try_x)
-	var allow_y = not _resources.is_world_blocked(try_y)
+	var allow_x = not _is_blocked_at(Vector2(next_pos.x, global_position.y))
+	var allow_y = not _is_blocked_at(Vector2(global_position.x, next_pos.y))
 	if allow_x and not allow_y:
 		velocity.y = 0.0
 	elif allow_y and not allow_x:
@@ -169,6 +167,20 @@ func _apply_resource_blocking(delta: float) -> void:
 
 func _get_feet_at(body_pos: Vector2) -> Vector2:
 	return body_pos + _feet_offset
+
+func _is_blocked_at(body_pos: Vector2) -> bool:
+	var feet = _get_feet_at(body_pos)
+	var half = max(1.0, feet_block_tile_size * 0.5)
+	var sample_y = feet.y - half
+	var sample_points = [
+		Vector2(feet.x - half + 1.0, sample_y),
+		Vector2(feet.x, sample_y),
+		Vector2(feet.x + half - 1.0, sample_y)
+	]
+	for point in sample_points:
+		if _resources.is_world_blocked(point):
+			return true
+	return false
 
 func _compute_feet_offset() -> Vector2:
 	if appearance != null:

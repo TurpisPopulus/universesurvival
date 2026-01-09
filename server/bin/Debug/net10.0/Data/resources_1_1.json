@@ -1,6 +1,16 @@
 {
   "X": 1,
   "Y": 1,
-  "Version": 6,
-  "Resources": []
+  "Version": 7,
+  "Resources": [
+    {
+      "EntityId": "1bc9d653c5684d11bc13bd43f68e74c1",
+      "TypeId": "tree_oak",
+      "X": 112,
+      "Y": 115,
+      "Amount": 8,
+      "CreatedUtc": "2026-01-09T22:03:56.9516724Z",
+      "UpdatedUtc": "2026-01-09T22:03:56.9516974Z"
+    }
+  ]
 }
