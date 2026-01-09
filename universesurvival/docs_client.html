@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
@@ -32,7 +32,7 @@
       }
 
       .page {
-        max-width: 980px;
+        max-width: 1040px;
         margin: 0 auto;
         padding: 36px 20px 60px;
         position: relative;
@@ -140,6 +140,11 @@
         border: 1px dashed rgba(31, 111, 95, 0.3);
       }
 
+      ul {
+        margin: 8px 0 0 18px;
+        color: var(--muted);
+      }
+
       footer {
         margin-top: 40px;
         font-size: 14px;
@@ -158,108 +163,185 @@
     <div class="page">
       <header>
         <div class="brand">Universe Survival Client</div>
-        <div class="tag">Godot client · Stage 1</div>
+        <div class="tag">Структура · Godot</div>
       </header>
 
       <section class="hero">
-        <h1>Клиент Godot, связанный с UDP сервером</h1>
+        <h1>Клиент: только структура, масштабируемо</h1>
         <p>
-          Клиент отправляет позицию игрока на сервер, получает список игроков и данные карты.
-          Есть базовый редактор карты для админа.
+          Клиент отображает мир и отправляет действия игрока. Истина всегда у сервера,
+          локальные JSON используются только для настроек и кеша интерфейса.
         </p>
         <div class="grid">
           <div class="card">
-            <h3>Что делает</h3>
-            <p>Отправляет id, имя и координаты по UDP, принимает список игроков и чанки карты.</p>
+            <h3>Источник истины</h3>
+            <p><span class="pill">Server RAM</span> Клиент синхронизирует копию мира.</p>
           </div>
           <div class="card">
-            <h3>Что не делает</h3>
-            <p>Нет интерполяции, предсказаний и прав доступа на изменение карты.</p>
+            <h3>Категории сущностей</h3>
+            <p>Ресурсы, объекты, NPC отображаются на отдельных слоях.</p>
           </div>
           <div class="card">
-            <h3>Формат пакета</h3>
-            <p><span class="pill">id|name|x|y</span> (UTF-8, разделитель - |).</p>
+            <h3>Масштаб</h3>
+            <p>Чанк-стриминг, кэш видимости, загрузка по версиям.</p>
           </div>
         </div>
       </section>
 
       <section class="section">
-        <h2>Быстрый старт</h2>
-        <p>Сначала запусти сервер, затем открой проект Godot.</p>
-        <pre><code>cd server
-
-dotnet run --project KiloServer.csproj
-
-# Клиент
-# Открой universesurvival/project.godot в Godot 4 и запусти сцену main_menu.tscn</code></pre>
+        <h2>План структуры проекта</h2>
+        <p>Эталонная структура для роста проекта.</p>
+        <pre><code>universesurvival/
+  main_menu.tscn
+  main.tscn
+  scenes/
+    player.tscn
+    remote_player.tscn
+    world/
+      world_root.tscn
+  scripts/
+    Net/
+      UdpClient.gd
+      PacketRouter.gd
+    World/
+      WorldStream.gd
+      ChunkCache.gd
+    Entities/
+      EntityRegistry.gd
+      ResourceView.gd
+      ObjectView.gd
+      NpcView.gd
+    UI/
+      Hud.gd
+      AdminPanel.gd
+  data/
+    client_settings.json</code></pre>
       </section>
 
       <section class="section">
-        <h2>Главное меню</h2>
+        <h2>Сцены и ответственность</h2>
         <div class="card">
-          <p>Первой сценой запускается <code>main_menu.tscn</code>.</p>
-          <p>Кнопка Enter открывает окно входа с вводом имени и пароля.</p>
-          <p>Create Player открывает форму создания имени и пароля.</p>
-          <p>Регистрация и вход выполняются через сервер, локальное сохранение не используется.</p>
-          <p>Регистрация запрещает повторяющиеся имена.</p>
-          <p>Вход проверяет имя на сервере и не пускает, если оно уже онлайн.</p>
-          <p>Статус сервера отображается слева внизу (online/offline).</p>
-          <p>При входе игрок появляется в сохраненной на сервере позиции.</p>
-          <p>Сервер возвращает уровень доступа, он включает кнопку админки.</p>
-          <p>Settings пока неактивна.</p>
+          <ul>
+            <li><code>main_menu.tscn</code> — вход, регистрация, статус сервера.</li>
+            <li><code>main.tscn</code> — игровая сцена, подключение, HUD.</li>
+            <li><code>player.tscn</code> — локальный игрок и ввод.</li>
+            <li><code>remote_player.tscn</code> — удаленные игроки.</li>
+            <li><code>world_root.tscn</code> — TileMap и слои сущностей.</li>
+          </ul>
         </div>
       </section>
 
       <section class="section">
-        <h2>Настройки подключения</h2>
-        <p>Параметры настраиваются в инспекторе узла Player (экспортированные свойства).</p>
-        <pre><code>@export var server_address: String = "127.0.0.1"
-@export var server_port: int = 7777
-@export var player_id: String = "player-1"
-@export var player_name: String = "Ari"
-@export var send_rate_hz: float = 10.0</code></pre>
-        <p>При старте клиент присваивает случайный <code>player_id</code>.</p>
-      </section>
-
-      <section class="section">
-        <h2>Отправка позиции</h2>
-        <div class="card">
-          <p>Клиент отправляет мировую позицию игрока с точностью до 3 знаков.</p>
-          <pre><code>player-1|Ari|12.500|8.750</code></pre>
-          <p>Ответ сервера содержит несколько строк и сохраняется в <code>_last_reply</code>.</p>
+        <h2>Системы клиента</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Net</h3>
+            <p>UDP-обмен, маршрутизация пакетов, контроль частоты.</p>
+          </div>
+          <div class="card">
+            <h3>WorldStream</h3>
+            <p>Запрос чанков и сущностей по версии, поддержка кэша.</p>
+          </div>
+          <div class="card">
+            <h3>EntityRegistry</h3>
+            <p>Реестр сущностей: ресурсы, объекты, NPC, игроки.</p>
+          </div>
+          <div class="card">
+            <h3>Render Layers</h3>
+            <p>Раздельные визуальные слои: terrain, resources, objects, npc.</p>
+          </div>
         </div>
       </section>
 
       <section class="section">
-        <h2>Карта и редактор</h2>
+        <h2>Потоки данных</h2>
         <div class="card">
-          <p>Карта запрашивает чанки у сервера сообщениями <code>CHUNK|cx|cy|lastVersion</code>.</p>
-          <p>Ответ - JSON сетка 100x100 с версией, которая рисуется в <code>WorldMap.gd</code>.</p>
-          <p>Админка открывает меню из 10 кнопок и доступ к редактору карты.</p>
-          <p>Редактор позволяет выбрать тайл и ставить его мышкой по карте.</p>
-          <p>Сохранение отправляет изменения на сервер через <code>EDIT</code>.</p>
-          <p>Клиент рисует карту только по данным, полученным от сервера.</p>
+          <p>Основные сценарии синхронизации:</p>
+          <pre><code>LOGIN -> OK -> spawn игрока
+Движение -> SEND id|name|x|y -> получение списка игроков
+CHUNK|cx|cy|ver -> обновление карты
+RESOURCES|cx|cy|ver -> ресурсы в чанке
+OBJECTS|cx|cy|ver -> объекты в чанке
+NPCS|cx|cy|ver -> NPC в чанке</code></pre>
+          <p>Клиент обновляет локальную копию только по ответам сервера.</p>
         </div>
       </section>
 
       <section class="section">
-        <h2>Удаленные игроки</h2>
+        <h2>Стриминг и кэш чанков</h2>
         <div class="card">
-          <p>Сцена <code>remote_player.tscn</code> используется для отображения других игроков.</p>
-          <p>Создание и обновление выполняется в <code>Player.gd</code> по id.</p>
+          <ul>
+            <li>Радиус видимости задается настройкой (например, 5x5 чанков).</li>
+            <li>Клиент хранит кэш чанков по версии, не перерисовывает без изменений.</li>
+            <li>Выход из радиуса — чанк выгружается из памяти и освобождает спрайты.</li>
+          </ul>
+          <p>Кэш — это копия, источник истины всегда сервер.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Ресурсы, объекты, NPC (отображение)</h2>
+        <div class="card">
+          <p>Каждый тип сущности имеет свой визуальный контроллер.</p>
+          <pre><code>ResourceView
+- спрайт по typeId
+- эффекты добычи
+
+ObjectView
+- статическая модель/спрайт
+- интерактивная подсветка
+
+NpcView
+- анимации состояния
+- индикаторы здоровья</code></pre>
+          <p>Состояние приходит с сервера и применяется в Registry.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Поведение при разрыве</h2>
+        <div class="card">
+          <ul>
+            <li>Клиент сохраняет последнюю позицию камеры и UI.</li>
+            <li>После переподключения заново запрашивает чанки по версии 0.</li>
+            <li>Старые сущности очищаются перед полной синхронизацией.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Интеракции игрока</h2>
+        <div class="card">
+          <ul>
+            <li>Клик/клавиша формирует запрос на сервер (добыча, использовать объект).</li>
+            <li>Сервер подтверждает действие и присылает обновление состояния.</li>
+            <li>Клиент не применяет изменения без подтверждения.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Локальные JSON</h2>
+        <div class="card">
+          <p>Используются только для:</p>
+          <ul>
+            <li>настроек клиента (последний адрес сервера, громкость);</li>
+            <li>кэша UI (последняя вкладка и т.п.).</li>
+          </ul>
+          <p>Локальные JSON никогда не меняют состояние мира.</p>
         </div>
       </section>
 
       <section class="section note">
-        <h2>Подсказка</h2>
+        <h2>Примечание для развития</h2>
         <p>
-          Если нужно увидеть ответ на экране, можно добавить UI и выводить
-          <code>_last_reply</code> в Label. Сейчас ответ доступен для отладки.
+          Этот документ описывает структуру. Перед добавлением новой системы
+          обновляй <code>docs_client.html</code> и фиксируй изменения в <code>ver_client.html</code>.
         </p>
       </section>
 
       <footer>
-        <p>Файл создан автоматически. Если нужно добавить разделы - скажите.</p>
+        <p>Документация структуры клиента. Основа для дальнейшей реализации.</p>
       </footer>
     </div>
   </body>
