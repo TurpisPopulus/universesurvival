@@ -28,6 +28,9 @@ var objectWorld = LoadObjectWorld(dataDir);
 var endpoints = new Dictionary<string, IPEndPoint>(StringComparer.Ordinal);
 var activeWindow = TimeSpan.FromSeconds(10);
 var chunkSaveInterval = TimeSpan.FromSeconds(30);
+var logInterval = TimeSpan.FromSeconds(1);
+var lastLogByPlayer = new Dictionary<string, DateTime>(StringComparer.Ordinal);
+var broadcastInterval = TimeSpan.FromMilliseconds(33);
 
 if (NormalizeAccounts(accounts))
 {
@@ -93,12 +96,95 @@ var chunkSaveTask = Task.Run(async () =>
     }
 });
 
+using var broadcastTimer = new PeriodicTimer(broadcastInterval);
+Task<UdpReceiveResult>? receiveTask = null;
+Task<bool>? tickTask = null;
+
 while (!cts.IsCancellationRequested)
 {
+    if (receiveTask == null)
+    {
+        receiveTask = udp.ReceiveAsync(cts.Token).AsTask();
+    }
+
+    if (tickTask == null)
+    {
+        tickTask = broadcastTimer.WaitForNextTickAsync(cts.Token).AsTask();
+    }
+
+    var completed = await Task.WhenAny(receiveTask, tickTask);
+    if (completed == tickTask)
+    {
+        try
+        {
+            if (!await tickTask)
+            {
+                break;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            break;
+        }
+        finally
+        {
+            tickTask = null;
+        }
+
+        List<PlayerState> snapshot;
+        List<IPEndPoint> targets;
+        var now = DateTime.UtcNow;
+        lock (gate)
+        {
+            var staleNames = players.Values
+                .Where(player => now - player.LastSeenUtc > activeWindow)
+                .Select(player => player.Name)
+                .Distinct()
+                .ToList();
+            foreach (var staleName in staleNames)
+            {
+                endpoints.Remove(staleName);
+                lastLogByPlayer.Remove(staleName);
+            }
+
+            snapshot = players.Values
+                .Where(player => now - player.LastSeenUtc <= activeWindow)
+                .ToList();
+            targets = endpoints.Values.ToList();
+        }
+
+        if (targets.Count > 0)
+        {
+            var response = BuildBroadcast(snapshot);
+            var bytes = Encoding.UTF8.GetBytes(response);
+            var sentTo = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var endpoint in targets)
+            {
+                var key = endpoint.ToString();
+                if (!sentTo.Add(key))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await udp.SendAsync(bytes, bytes.Length, endpoint);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Send error: {ex.Message}");
+                }
+            }
+        }
+
+        continue;
+    }
+
     UdpReceiveResult result;
     try
     {
-        result = await udp.ReceiveAsync(cts.Token);
+        result = await receiveTask;
+        receiveTask = null;
     }
     catch (OperationCanceledException)
     {
@@ -107,6 +193,7 @@ while (!cts.IsCancellationRequested)
     catch (Exception ex)
     {
         Console.WriteLine($"Receive error: {ex.Message}");
+        receiveTask = null;
         continue;
     }
 
@@ -330,50 +417,30 @@ while (!cts.IsCancellationRequested)
         }
     }
 
-    Console.WriteLine(
-        $"From {result.RemoteEndPoint}: id={payload.Id}, name={payload.Name}, x={payload.X}, y={payload.Y}"
-    );
-
-    List<PlayerState> snapshot;
-    List<IPEndPoint> targets;
-    lock (gate)
+    var shouldLog = true;
+    if (logInterval > TimeSpan.Zero)
     {
-        var staleNames = players.Values
-            .Where(player => timestamp - player.LastSeenUtc > activeWindow)
-            .Select(player => player.Name)
-            .Distinct()
-            .ToList();
-        foreach (var staleName in staleNames)
+        if (lastLogByPlayer.TryGetValue(payload.Name, out var lastLog) &&
+            timestamp - lastLog < logInterval)
         {
-            endpoints.Remove(staleName);
+            shouldLog = false;
         }
-
-        snapshot = players.Values
-            .Where(player => timestamp - player.LastSeenUtc <= activeWindow)
-            .ToList();
-        targets = endpoints.Values.ToList();
+        else
+        {
+            lastLogByPlayer[payload.Name] = timestamp;
+        }
     }
 
-    var response = BuildBroadcast(snapshot);
-    var bytes = Encoding.UTF8.GetBytes(response);
-    var sentTo = new HashSet<string>(StringComparer.Ordinal);
-    foreach (var endpoint in targets)
+    if (shouldLog)
     {
-        var key = endpoint.ToString();
-        if (!sentTo.Add(key))
-        {
-            continue;
-        }
-
-        try
-        {
-            await udp.SendAsync(bytes, bytes.Length, endpoint);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Send error: {ex.Message}");
-        }
+        Console.WriteLine(
+            $"From {result.RemoteEndPoint}: id={payload.Id}, name={payload.Name}, " +
+            $"x={payload.X.ToString("0.###", CultureInfo.InvariantCulture)}, " +
+            $"y={payload.Y.ToString("0.###", CultureInfo.InvariantCulture)}"
+        );
     }
+
+    // Broadcasts are handled by the periodic timer to keep a steady tick.
 }
 
 SaveAll();

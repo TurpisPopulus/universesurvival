@@ -1,11 +1,14 @@
 extends CharacterBody2D
 
 @export var speed: float = 220.0
+@export var acceleration: float = 2000.0
+@export var deceleration: float = 2000.0
 @export var server_address: String = "127.0.0.1"
 @export var server_port: int = 7777
 @export var player_id: String = "player-1"
 @export var player_name: String = "Ari"
-@export var send_rate_hz: float = 10.0
+@export var send_rate_hz: float = 30.0
+@export var remote_timeout_sec: float = 3.0
 @export var remote_scene: PackedScene = preload("res://remote_player.tscn")
 @export var appearance_payload: String = ""
 @onready var appearance: Node = get_node_or_null("Appearance")
@@ -14,6 +17,7 @@ var _udp := PacketPeerUDP.new()
 var _send_accum := 0.0
 var _last_reply: String = ""
 var _remotes: Dictionary[String, Node2D] = {}
+var _remote_last_seen: Dictionary[String, int] = {}
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -34,7 +38,11 @@ func _physics_process(delta: float) -> void:
 	if input.length() > 1.0:
 		input = input.normalized()
 
-	velocity = input * speed
+	var target_velocity := input * speed
+	if input == Vector2.ZERO:
+		velocity = velocity.move_toward(Vector2.ZERO, deceleration * delta)
+	else:
+		velocity = velocity.move_toward(target_velocity, acceleration * delta)
 	move_and_slide()
 
 	if appearance != null and appearance.has_method("set_move_vector"):
@@ -61,7 +69,7 @@ func _send_state() -> void:
 		push_warning("UDP send failed (err %s)" % err)
 
 func _poll_server() -> void:
-	var seen: Dictionary = {}
+	var now_ms := Time.get_ticks_msec()
 	while _udp.get_available_packet_count() > 0:
 		var data := _udp.get_packet()
 		if _udp.get_packet_error() != OK:
@@ -75,7 +83,7 @@ func _poll_server() -> void:
 			var id := parts[0].strip_edges()
 			if id == "" or id == player_id:
 				continue
-			seen[id] = true
+			_remote_last_seen[id] = now_ms
 			var node: Node2D = _remotes.get(id) as Node2D
 			if node == null:
 				if remote_scene == null:
@@ -84,23 +92,33 @@ func _poll_server() -> void:
 				node.name = "Remote_" + id
 				get_parent().add_child(node)
 				_remotes[id] = node
+				_remote_last_seen[id] = now_ms
 			var x := parts[2].to_float()
 			var y := parts[3].to_float()
-			node.global_position = Vector2(x, y)
+			var target := Vector2(x, y)
+			if node.has_method("set_remote_sample"):
+				node.set_remote_sample(target, now_ms)
+			elif node.has_method("set_target_position"):
+				node.set_target_position(target)
+			else:
+				node.global_position = target
 			if parts.size() >= 5 and node.has_method("set_appearance_payload"):
 				node.set_appearance_payload(parts[4])
 			if node.has_method("set_display_name"):
 				node.set_display_name(parts[1])
 
+	var timeout_ms := int(remote_timeout_sec * 1000.0)
 	var to_remove: Array = []
 	for id in _remotes.keys():
-		if not seen.has(id):
+		var last_seen: int = int(_remote_last_seen.get(id, 0))
+		if timeout_ms > 0 and now_ms - last_seen > timeout_ms:
 			to_remove.append(id)
 			var node: Node2D = _remotes.get(id) as Node2D
 			if node != null:
 				node.queue_free()
 	for id in to_remove:
 		_remotes.erase(id)
+		_remote_last_seen.erase(id)
 
 func _fmt(value: float) -> String:
 	return String.num(value, 3)

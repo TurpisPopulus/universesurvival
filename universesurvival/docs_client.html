@@ -269,6 +269,20 @@
       </section>
 
       <section class="section">
+        <h2>Синхронизация игроков и плавность</h2>
+        <div class="card">
+          <p>Синхронизация позиций идет через <code>Player.gd</code> по UDP: клиент отправляет пакеты <code>id|name|x|y|appearance</code> с частотой <code>send_rate_hz</code>, сервер отвечает широковещательным списком активных игроков.</p>
+          <ul>
+            <li><strong>remote_timeout_sec</strong> — время, через которое удаленный игрок считается отключившимся. Благодаря таймауту игроки не исчезают между редкими апдейтами.</li>
+            <li><strong>RemotePlayer.gd</strong> использует буфер с задержкой <code>interpolation_delay_ms</code> и линейную интерполяцию между двумя последними апдейтами; <code>snap_distance</code> отвечает за мгновенный «телепорт» при резком рассинхроне.</li>
+            <li><strong>acceleration</strong> и <strong>deceleration</strong> в <code>Player.gd</code> сглаживают старт/остановку локального игрока, убирая резкие рывки.</li>
+            <li>Если требуется еще более плавное движение, увеличивайте <code>send_rate_hz</code> и слегка поднимайте <code>interpolation_delay_ms</code>, чтобы сгладить джиттер.</li>
+          </ul>
+          <p>Локальный игрок двигается сразу, а удаленные — с плавной догоняющей интерполяцией, чтобы убрать «мигание» и рывки между пакетами.</p>
+        </div>
+      </section>
+
+      <section class="section">
         <h2>Создание персонажа</h2>
         <div class="card">
           <p>Форма Create Player включает выбор внешности и живое превью сборки paperdoll.</p>
