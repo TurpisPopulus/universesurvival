@@ -6,6 +6,7 @@ MMORPG-песочница с UDP-сервером на C# и клиентом н
 
 - `server/` — сервер (C#), запуск через `run_server.bat` или `dotnet run`.
 - `universesurvival/` — клиент (Godot 4), основной проект.
+- `universesurvival/ui/loading_screen.png` — картинка загрузочного экрана клиента.
 - `server/docs_server.html` — документация по серверу.
 - `universesurvival/docs_client.html` — документация по клиенту.
 - `server/ver_server.html` и `universesurvival/ver_client.html` — история версий.

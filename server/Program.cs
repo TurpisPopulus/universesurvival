@@ -149,6 +149,7 @@ while (!cts.IsCancellationRequested)
 
             snapshot = players.Values
                 .Where(player => now - player.LastSeenUtc <= activeWindow)
+                .Where(player => !string.Equals(player.Id, "login", StringComparison.Ordinal))
                 .ToList();
             targets = endpoints.Values.ToList();
         }
@@ -192,6 +193,11 @@ while (!cts.IsCancellationRequested)
     }
     catch (Exception ex)
     {
+        if (ex is SocketException socketEx && socketEx.SocketErrorCode == SocketError.ConnectionReset)
+        {
+            receiveTask = null;
+            continue;
+        }
         Console.WriteLine($"Receive error: {ex.Message}");
         receiveTask = null;
         continue;
@@ -259,9 +265,10 @@ while (!cts.IsCancellationRequested)
         {
             lock (gate)
             {
-                var state = players.TryGetValue(loginName, out var existing)
-                    ? existing with { LastSeenUtc = now }
-                    : new PlayerState("login", loginName, 0, 0, now, GetAppearance(loginName, accounts, gate));
+            var appearance = GetAppearance(loginName, accounts, gate);
+            var state = players.TryGetValue(loginName, out var existing)
+                ? existing with { Id = "login", LastSeenUtc = now, Appearance = appearance }
+                : new PlayerState("login", loginName, 0, 0, now, appearance);
                 spawnX = state.X;
                 spawnY = state.Y;
                 players[loginName] = state;

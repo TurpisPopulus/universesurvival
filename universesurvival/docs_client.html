@@ -209,6 +209,8 @@
     eyes.png
     noses.png
     mouths.png
+  ui/
+    loading_screen.png
   scenes/
     player.tscn
     remote_player.tscn
@@ -238,7 +240,7 @@
         <div class="card">
           <ul>
             <li><code>main_menu.tscn</code> — вход, регистрация, статус сервера, выбор внешности.</li>
-            <li><code>main.tscn</code> — игровая сцена, подключение, HUD.</li>
+            <li><code>main.tscn</code> — игровая сцена, подключение, HUD и загрузочный оверлей.</li>
             <li><code>player.tscn</code> — локальный игрок и ввод.</li>
             <li><code>remote_player.tscn</code> — удаленные игроки.</li>
             <li><code>world_root.tscn</code> — TileMap и слои сущностей.</li>
@@ -348,6 +350,23 @@ OBJECTS|cx|cy|ver -> объекты в чанке
 OBJECT_EDIT|{...} -> админ размещает объекты
 NPCS|cx|cy|ver -> NPC в чанке</code></pre>
           <p>Клиент обновляет локальную копию только по ответам сервера.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Загрузочный экран и готовность игрока</h2>
+        <div class="card">
+          <p>При входе в игру показывается полноэкранный оверлей <code>Ui/LoadingOverlay</code> в сцене <code>main.tscn</code>.</p>
+          <ul>
+            <li><strong>Картинка:</strong> <code>res://ui/loading_screen.png</code> — обычный PNG, можно менять без кода.</li>
+            <li><strong>Прогресс:</strong> <code>Ui/LoadingOverlay/LoadingProgress</code> отображает загрузку стартовых чанков карты и объектов.</li>
+          </ul>
+          <p>Загрузка считается завершенной, когда оба слоя отчитались о готовности:</p>
+          <ul>
+            <li><code>WorldMap.gd</code> и <code>WorldObjects.gd</code> считают стартовый радиус чанков (по <code>VIEW_DISTANCE_CHUNKS</code>), отслеживают получение ответов и испускают сигналы <code>initial_load_progress</code> и <code>initial_load_completed</code>.</li>
+            <li><code>Main.gd</code> подписывается на сигналы, считает общий процент и держит минимальную задержку <code>MIN_LOADING_TIME_SEC</code>, чтобы у клиента было время на загрузку.</li>
+          </ul>
+          <p>Пока загрузка активна, <code>Player.gd</code> блокирует движение и сеть через <code>set_loading_blocked(true)</code>. Экран держится минимум до подтверждения от сервера: клиент получает широковещательный список игроков с собственным <code>id</code>. Это предотвращает раннюю рассылку позиции до полной готовности мира, а сервер держит такого игрока как <code>id="login"</code> и не показывает другим.</p>
         </div>
       </section>
 

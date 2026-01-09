@@ -1,5 +1,8 @@
 extends TileMap
 
+signal initial_load_progress(loaded: int, total: int)
+signal initial_load_completed
+
 const TILE_SIZE = 32
 const CHUNK_SIZE_TILES = 100
 const VIEW_DISTANCE_CHUNKS = 2
@@ -31,6 +34,9 @@ var _tile_defs: Dictionary = {}
 var _type_atlas: Dictionary = {}
 var _type_textures: Dictionary = {}
 var _blocking_types: Dictionary = {}
+var _initial_required: Dictionary = {}
+var _initial_total := 0
+var _initial_loaded := false
 
 func _ready() -> void:
 	_player = get_node_or_null(player_path)
@@ -198,6 +204,7 @@ func _request_visible_chunks(force: bool) -> void:
 			needed[chunk] = true
 			_request_chunk(chunk)
 
+	_track_initial_chunks(needed)
 	var to_unload = []
 	for chunk in _loaded_chunks.keys():
 		if not needed.has(chunk):
@@ -252,6 +259,7 @@ func _poll_chunk_responses() -> void:
 			_apply_pending_for_chunk(chunk)
 		_loaded_chunks[chunk] = true
 		_chunk_versions[chunk] = version
+		_update_initial_progress()
 
 func _apply_object_chunk(chunk: Vector2i, objects: Variant) -> void:
 	if typeof(objects) != TYPE_ARRAY:
@@ -397,6 +405,25 @@ func _reload_visible_chunks_from_server() -> void:
 	clear()
 	_clear_all_collisions()
 	_request_visible_chunks(true)
+
+func _track_initial_chunks(needed: Dictionary) -> void:
+	if _initial_loaded or _initial_total > 0:
+		return
+	_initial_required = needed.duplicate()
+	_initial_total = _initial_required.size()
+	_update_initial_progress()
+
+func _update_initial_progress() -> void:
+	if _initial_loaded or _initial_total <= 0:
+		return
+	var loaded := 0
+	for chunk in _initial_required.keys():
+		if _loaded_chunks.has(chunk):
+			loaded += 1
+	emit_signal("initial_load_progress", loaded, _initial_total)
+	if loaded >= _initial_total:
+		_initial_loaded = true
+		emit_signal("initial_load_completed")
 
 func _has_tile_definition(type_id: String, rotation: int) -> bool:
 	return _tile_defs.has(_tile_key(type_id, rotation))

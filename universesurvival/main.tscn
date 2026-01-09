@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://cgvngah40k2v1"]
+[gd_scene load_steps=8 format=3 uid="uid://cgvngah40k2v1"]
 
 [ext_resource type="PackedScene" uid="uid://dpx63pigio2ff" path="res://player.tscn" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://y07dgnjxwcqju" path="res://WorldMap.gd" id="2_qe77o"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://TilePalette.gd" id="4_tile_palette"]
 [ext_resource type="Script" path="res://WorldObjects.gd" id="5_world_objects"]
 [ext_resource type="Script" path="res://ObjectPalette.gd" id="6_object_palette"]
+[ext_resource type="Texture2D" path="res://ui/loading_screen.png" id="7_loading_texture"]
 
 [node name="Main" type="Node2D"]
 position = Vector2(763, 421)
@@ -131,6 +132,27 @@ text = "Удалить"
 
 [node name="ObjectEditorBackButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
 text = "Назад"
+
+[node name="LoadingOverlay" type="Control" parent="Ui"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="LoadingImage" type="TextureRect" parent="Ui/LoadingOverlay"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+texture = ExtResource("7_loading_texture")
+
+[node name="LoadingProgress" type="ProgressBar" parent="Ui/LoadingOverlay"]
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 48.0
+offset_right = -48.0
+offset_top = -40.0
+offset_bottom = -18.0
+value = 0.0
 
 [node name="Player" parent="." instance=ExtResource("1_ig7tw")]
 position = Vector2(-189.9254, -91.345856)

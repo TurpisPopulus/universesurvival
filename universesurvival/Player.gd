@@ -13,12 +13,18 @@ extends CharacterBody2D
 @export var appearance_payload: String = ""
 @onready var appearance: Node = get_node_or_null("Appearance")
 
+signal first_state_sent
+signal server_confirmed
+
 var _udp := PacketPeerUDP.new()
 var _send_accum := 0.0
 var _last_reply: String = ""
 var _remotes: Dictionary[String, Node2D] = {}
 var _remote_last_seen: Dictionary[String, int] = {}
 var _rng := RandomNumberGenerator.new()
+var _loading_blocked := true
+var _initial_state_sent := false
+var _server_confirmed := false
 
 func _ready() -> void:
 	_rng.randomize()
@@ -30,6 +36,8 @@ func _ready() -> void:
 		appearance.set_appearance_payload(appearance_payload)
 
 func _physics_process(delta: float) -> void:
+	if _loading_blocked:
+		return
 	var input := Vector2(
 		Input.get_action_strength("move_right") - Input.get_action_strength("move_left"),
 		Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
@@ -67,6 +75,10 @@ func _send_state() -> void:
 	var err := _udp.put_packet(payload.to_utf8_buffer())
 	if err != OK:
 		push_warning("UDP send failed (err %s)" % err)
+		return
+	if not _initial_state_sent:
+		_initial_state_sent = true
+		emit_signal("first_state_sent")
 
 func _poll_server() -> void:
 	var now_ms := Time.get_ticks_msec()
@@ -81,7 +93,12 @@ func _poll_server() -> void:
 			if parts.size() < 4:
 				continue
 			var id := parts[0].strip_edges()
-			if id == "" or id == player_id:
+			if id == "":
+				continue
+			if id == player_id:
+				if not _server_confirmed:
+					_server_confirmed = true
+					emit_signal("server_confirmed")
 				continue
 			_remote_last_seen[id] = now_ms
 			var node: Node2D = _remotes.get(id) as Node2D
@@ -134,3 +151,15 @@ func set_appearance_payload(payload: String) -> void:
 	appearance_payload = payload
 	if appearance != null and appearance.has_method("set_appearance_payload"):
 		appearance.set_appearance_payload(payload)
+
+func set_loading_blocked(blocked: bool) -> void:
+	if _loading_blocked == blocked:
+		return
+	_loading_blocked = blocked
+	if blocked:
+		velocity = Vector2.ZERO
+		if appearance != null and appearance.has_method("set_move_vector"):
+			appearance.set_move_vector(Vector2.ZERO)
+	else:
+		_send_accum = 0.0
+		_send_state()

@@ -120,6 +120,24 @@
         <h1>История версий</h1>
         <p>Формат: v0.000 / дата / список изменений.</p>
         <div class="card">
+          <strong>v0.032 / 2026-01-09</strong>
+          <ul>
+            <li>UDP receive игнорирует <code>SocketError.ConnectionReset</code> (ICMP port unreachable от клиентов).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.031 / 2026-01-09</strong>
+          <ul>
+            <li>LOGIN теперь помечает игрока как <code>id="login"</code> до первого позиционного пакета и не включает его в рассылку.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.030 / 2026-01-09</strong>
+          <ul>
+            <li>docs_server дополнен правилами готовности клиента и окна активности.</li>
+          </ul>
+        </div>
+        <div class="card">
           <strong>v0.029 / 2026-01-09</strong>
           <ul>
             <li>Увеличен тик рассылки позиций до 30 Гц (33 мс).</li>

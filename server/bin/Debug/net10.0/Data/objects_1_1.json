@@ -1,7 +1,7 @@
 {
   "X": 1,
   "Y": 1,
-  "Version": 29,
+  "Version": 31,
   "Objects": [
     {
       "EntityId": "d6d4ccfffe2549208cd2c563b0b40d0a",
@@ -32,6 +32,26 @@
       "IsBlocking": true,
       "CreatedUtc": "2026-01-09T12:20:58.2929434Z",
       "UpdatedUtc": "2026-01-09T12:20:58.2929434Z"
+    },
+    {
+      "EntityId": "c911e88f4e364708bf1fab30f27cf823",
+      "TypeId": "wall_stone",
+      "X": 122,
+      "Y": 113,
+      "Rotation": 1,
+      "IsBlocking": true,
+      "CreatedUtc": "2026-01-09T19:11:59.3072918Z",
+      "UpdatedUtc": "2026-01-09T19:11:59.3072921Z"
+    },
+    {
+      "EntityId": "f6c7b966b1e94932a9923f873b9083e3",
+      "TypeId": "wall_stone",
+      "X": 122,
+      "Y": 114,
+      "Rotation": 1,
+      "IsBlocking": true,
+      "CreatedUtc": "2026-01-09T19:11:59.3073181Z",
+      "UpdatedUtc": "2026-01-09T19:11:59.3073181Z"
     }
   ]
 }
