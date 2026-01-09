@@ -56,6 +56,8 @@ func _on_map_editor_back_pressed() -> void:
 		map_editor_panel.visible = false
 	if admin_menu != null:
 		admin_menu.visible = true
+	if world_map != null and world_map.has_method("discard_map_changes"):
+		world_map.discard_map_changes()
 	if world_map != null and world_map.has_method("set_editor_mode"):
 		world_map.set_editor_mode(false)
 

@@ -371,6 +371,20 @@ NPCS|cx|cy|lastVersion</code></pre>
       </section>
 
       <section class="section">
+        <h2>EDIT: изменения карты</h2>
+        <div class="card">
+          <p>Команда <code>EDIT</code> используется админским клиентом для изменения карты. Сервер применяет изменения сразу и увеличивает версию чанка.</p>
+          <pre><code>EDIT|{"changes":[{"x":123,"y":456,"tile":2}]}</code></pre>
+          <ul>
+            <li><strong>x</strong>, <strong>y</strong> - координаты тайла на серверной сетке.</li>
+            <li><strong>tile</strong> - id тайла из tileset.</li>
+            <li>Клиент группирует локальные правки и отправляет их только при нажатии "Сохранить".</li>
+            <li>Отмена правок выполняется на клиенте повторным запросом чанков.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
         <h2>Идентификаторы и версии</h2>
         <div class="card">
           <ul>

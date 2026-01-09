@@ -156,6 +156,8 @@ func _poll_chunk_responses() -> void:
 		var chunk = Vector2i(int(payload["x"]), int(payload["y"]))
 		var version = int(payload.get("version", 0))
 		_apply_chunk(chunk, payload["tiles"])
+		if _edit_mode and not _pending_changes.is_empty():
+			_apply_pending_for_chunk(chunk)
 		_loaded_chunks[chunk] = true
 		_chunk_versions[chunk] = version
 
@@ -203,6 +205,10 @@ func save_map_changes() -> void:
 	_request_chunks_for_changes(changes)
 	_pending_changes.clear()
 
+func discard_map_changes() -> void:
+	_pending_changes.clear()
+	_reload_visible_chunks_from_server()
+
 func _place_tile_at(world_pos: Vector2) -> void:
 	if _source_id == -1:
 		return
@@ -216,7 +222,7 @@ func _queue_tile_change(tile_pos: Vector2i, tile_id: int) -> void:
 	if not _tile_atlas.has(tile_id):
 		return
 	_pending_changes[tile_pos] = tile_id
-	save_map_changes()
+	_apply_tile_update(tile_pos, tile_id)
 
 func _ensure_player() -> void:
 	if _player != null:
@@ -233,6 +239,14 @@ func _apply_tile_update(tile_pos: Vector2i, tile_id: int) -> void:
 	var atlas_coords = _tile_atlas.get(tile_id, TILE_GRASS)
 	set_cell(0, tile_pos, _source_id, atlas_coords)
 
+func _apply_pending_for_chunk(chunk: Vector2i) -> void:
+	for pos in _pending_changes.keys():
+		var server_pos = pos + map_origin_tile
+		var cx = int(floor(server_pos.x / float(CHUNK_SIZE_TILES)))
+		var cy = int(floor(server_pos.y / float(CHUNK_SIZE_TILES)))
+		if cx == chunk.x and cy == chunk.y:
+			_apply_tile_update(pos, int(_pending_changes[pos]))
+
 func _request_chunks_for_changes(changes: Array) -> void:
 	var requested := {}
 	for item in changes:
@@ -247,3 +261,9 @@ func _request_chunks_for_changes(changes: Array) -> void:
 			continue
 		requested[chunk] = true
 		_request_chunk(chunk)
+
+func _reload_visible_chunks_from_server() -> void:
+	_loaded_chunks.clear()
+	_chunk_versions.clear()
+	clear()
+	_request_visible_chunks(true)
