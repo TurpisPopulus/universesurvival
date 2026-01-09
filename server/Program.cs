@@ -214,24 +214,29 @@ while (!cts.IsCancellationRequested)
             continue;
         }
 
-        Console.WriteLine($"Map update received from {result.RemoteEndPoint}: {mapUpdate.Changes.Length} changes");
+        Console.WriteLine($"[MAPUPDATE] received changes={mapUpdate.Changes.Length} from {result.RemoteEndPoint}");
         mapEndpoints.Add(result.RemoteEndPoint);
         MapUpdatePayload appliedUpdate;
         lock (gate)
         {
             appliedUpdate = ApplyMapUpdate(world, mapUpdate);
-            SaveWorld(worldPath, world);
+            if (appliedUpdate.Changes.Length > 0)
+            {
+                SaveWorld(worldPath, world);
+            }
         }
         var appliedCount = appliedUpdate.Changes?.Length ?? 0;
-        Console.WriteLine($"Map update applied: {appliedCount} changes saved");
+        Console.WriteLine($"[MAPUPDATE] applied changes={appliedCount}");
         if (appliedCount > 0)
         {
             lastMapChange = appliedUpdate.Changes[0];
             var sample = lastMapChange;
             Console.WriteLine($"Map update sample applied: ({sample.X},{sample.Y}) tile={sample.Tile}");
+            Console.WriteLine($"[MAPUPDATE] saved world to {worldPath}");
         }
         if (appliedCount == 0 && mapUpdate.Changes.Length > 0)
         {
+            Console.WriteLine("[MAPUPDATE] applied=0 (ignored/out of bounds?)");
             var sample = mapUpdate.Changes
                 .Take(3)
                 .Select(change => $"({change.X},{change.Y})")
@@ -722,6 +727,23 @@ static WorldMap LoadWorld(string path)
             var generated = WorldMap.Generate(256, 256);
             SaveWorld(path, generated);
             return generated;
+        }
+
+        var expected = map.Width * map.Height;
+        if (expected <= 0)
+        {
+            var generated = WorldMap.Generate(256, 256);
+            SaveWorld(path, generated);
+            return generated;
+        }
+
+        if (map.Tiles.Length != expected)
+        {
+            Console.WriteLine($"World load warning: tiles length {map.Tiles.Length} expected {expected}. Repairing.");
+            var repaired = new int[expected];
+            Array.Copy(map.Tiles, repaired, Math.Min(map.Tiles.Length, repaired.Length));
+            map.Tiles = repaired;
+            SaveWorld(path, map);
         }
 
         return map;
