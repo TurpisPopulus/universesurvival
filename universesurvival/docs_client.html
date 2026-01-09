@@ -280,7 +280,7 @@
             <li>Eyes, Nose, Mouth, Beard: по 10 вариантов (1-10).</li>
           </ul>
           <p>Слои превью собираются в порядке: body → head → eyes → nose → mouth → beard → hair.</p>
-          <p>Текущая интеграция влияет на превью в меню; передача внешности на сервер планируется отдельно.</p>
+          <p>Выбранная внешность сериализуется в base64 JSON и синхронизируется с сервером при регистрации и в игровых пакетах.</p>
         </div>
       </section>
 
@@ -289,10 +289,35 @@
         <div class="card">
           <p>Все атласы формата 64×128 px, прозрачный фон, pivot: bottom-center. Элементы совпадают по позиции, чтобы любой набор корректно совмещался.</p>
           <ul>
-            <li>body_skinny.png, body_normal.png, body_fat.png — по одному кадру 64×128.</li>
-            <li>heads.png — 20 кадров (сетка 10×2).</li>
-            <li>hair_male.png, hair_female.png — по 10 кадров (сетка 10×1).</li>
-            <li>beards.png, eyes.png, noses.png, mouths.png — по 10 кадров (сетка 10×1).</li>
+            <li>body_skinny.png, body_normal.png, body_fat.png — по 6 кадров анимации (сетка 6×1) с руками по умолчанию.</li>
+            <li>heads.png — 20 форм, каждая по 6 кадров (сетка 6×20).</li>
+            <li>hair_male.png, hair_female.png — 10 форм, каждая по 6 кадров (сетка 6×10).</li>
+            <li>beards.png, eyes.png, noses.png, mouths.png — 10 форм, каждая по 6 кадров (сетка 6×10).</li>
+          </ul>
+          <p>Количество кадров совпадает для всех слоев: 6. Индекс кадра общий на все слои.</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Анимации персонажа</h2>
+        <div class="card">
+          <p>В игре используется paperdoll-рендер. При движении персонажа анимация проигрывается по 6 кадрам, направление определяется по движению влево/вправо.</p>
+          <ul>
+            <li>Слой тела содержит руки по умолчанию.</li>
+            <li>Анимация синхронизирована: все слои используют общий кадр.</li>
+            <li>Персонаж зеркалится по X при движении влево.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Синхронизация внешности</h2>
+        <div class="card">
+          <p>Сервер хранит внешний вид в аккаунте и рассылает его вместе с позициями игроков.</p>
+          <ul>
+            <li>REGISTER|name|password|appearance (appearance = base64 JSON).</li>
+            <li>LOGIN ответ: OK|x|y|accessLevel|appearance (если есть).</li>
+            <li>Пакет позиции: id|name|x|y|appearance (appearance опционален).</li>
           </ul>
         </div>
       </section>

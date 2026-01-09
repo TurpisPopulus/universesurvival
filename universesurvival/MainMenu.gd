@@ -5,6 +5,8 @@ const SERVER_PORT := 7777
 const REQUEST_TIMEOUT_SEC := 1.5
 const APPEARANCE_TILE_W := 64
 const APPEARANCE_TILE_H := 128
+const APPEARANCE_FRAME_COUNT := 6
+const APPEARANCE_FRAME_TIME := 0.18
 const BODY_ATLAS_PATHS := [
 	"res://characters/body_skinny.png",
 	"res://characters/body_normal.png",
@@ -57,6 +59,9 @@ const MOUTHS_ATLAS_PATH := "res://characters/mouths.png"
 
 var _status_check_in_flight := false
 var _appearance_textures := {}
+var _appearance_frame := 0
+var _appearance_anim_time := 0.0
+var _appearance_payload := ""
 
 func _ready() -> void:
 	enter_button.pressed.connect(_on_enter_pressed)
@@ -78,6 +83,15 @@ func _ready() -> void:
 	status_timer.timeout.connect(_on_status_timer_timeout)
 	_refresh_server_status()
 
+func _process(delta: float) -> void:
+	if not create_overlay.visible:
+		return
+	_appearance_anim_time += delta
+	if _appearance_anim_time >= APPEARANCE_FRAME_TIME:
+		_appearance_anim_time = 0.0
+		_appearance_frame = (_appearance_frame + 1) % APPEARANCE_FRAME_COUNT
+		_update_appearance_preview()
+
 func _on_enter_pressed() -> void:
 	login_status.text = ""
 	login_name.text = ""
@@ -89,6 +103,8 @@ func _on_create_pressed() -> void:
 	create_name.text = ""
 	create_password.text = ""
 	create_confirm.text = ""
+	_appearance_frame = 0
+	_appearance_anim_time = 0.0
 	appearance_gender.selected = 0
 	appearance_body.value = 1
 	appearance_head.value = 1
@@ -110,6 +126,7 @@ func _on_create_confirm_pressed() -> void:
 	var name := create_name.text.strip_edges()
 	var password := create_password.text
 	var confirm := create_confirm.text
+	_appearance_payload = _build_appearance_payload()
 
 	if name.is_empty():
 		create_status.text = "Name is required."
@@ -122,7 +139,7 @@ func _on_create_confirm_pressed() -> void:
 		return
 
 	create_status.text = "Creating..."
-	var result := await _request_register(name, password)
+	var result := await _request_register(name, password, _appearance_payload)
 	match result:
 		0:
 			create_overlay.visible = false
@@ -149,6 +166,7 @@ func _on_login_confirm_pressed() -> void:
 	var status := int(result.get("status", -1))
 	var position: Vector2 = Vector2.ZERO
 	var access_level := int(result.get("access_level", 5))
+	_appearance_payload = str(result.get("appearance", ""))
 	if result.has("position") and result["position"] is Vector2:
 		position = result["position"]
 	match status:
@@ -237,46 +255,64 @@ func _update_appearance_preview() -> void:
 
 	var body_textures: Array = _appearance_textures.get("body", [])
 	if body_index >= 0 and body_index < body_textures.size():
-		preview_body.texture = body_textures[body_index]
+		preview_body.texture = _atlas_frame(body_textures[body_index], 0, _appearance_frame)
 
 	var head_tex: Texture2D = _appearance_textures.get("head")
-	preview_head.texture = _atlas_frame(head_tex, head_index, 10)
+	preview_head.texture = _atlas_frame(head_tex, head_index, _appearance_frame)
 
 	var hair_tex: Texture2D = _appearance_textures.get("hair_male")
 	if appearance_gender.selected == 1:
 		hair_tex = _appearance_textures.get("hair_female")
-	preview_hair.texture = _atlas_frame(hair_tex, hair_index, 10)
+	preview_hair.texture = _atlas_frame(hair_tex, hair_index, _appearance_frame)
 
 	var beard_tex: Texture2D = _appearance_textures.get("beard")
-	preview_beard.texture = _atlas_frame(beard_tex, beard_index, 10)
+	preview_beard.texture = _atlas_frame(beard_tex, beard_index, _appearance_frame)
 
 	var eyes_tex: Texture2D = _appearance_textures.get("eyes")
-	preview_eyes.texture = _atlas_frame(eyes_tex, eyes_index, 10)
+	preview_eyes.texture = _atlas_frame(eyes_tex, eyes_index, _appearance_frame)
 
 	var nose_tex: Texture2D = _appearance_textures.get("nose")
-	preview_nose.texture = _atlas_frame(nose_tex, nose_index, 10)
+	preview_nose.texture = _atlas_frame(nose_tex, nose_index, _appearance_frame)
 
 	var mouth_tex: Texture2D = _appearance_textures.get("mouth")
-	preview_mouth.texture = _atlas_frame(mouth_tex, mouth_index, 10)
+	preview_mouth.texture = _atlas_frame(mouth_tex, mouth_index, _appearance_frame)
 
-func _atlas_frame(texture: Texture2D, index: int, columns: int) -> Texture2D:
+func _atlas_frame(texture: Texture2D, row_index: int, frame_index: int) -> Texture2D:
 	if texture == null:
 		return null
-	if index < 0:
-		index = 0
+	if row_index < 0:
+		row_index = 0
+	if frame_index < 0:
+		frame_index = 0
+	frame_index %= APPEARANCE_FRAME_COUNT
 	var atlas := AtlasTexture.new()
 	atlas.atlas = texture
-	var col := index % columns
-	var row := int(index / columns)
-	atlas.region = Rect2(col * APPEARANCE_TILE_W, row * APPEARANCE_TILE_H, APPEARANCE_TILE_W, APPEARANCE_TILE_H)
+	atlas.region = Rect2(frame_index * APPEARANCE_TILE_W, row_index * APPEARANCE_TILE_H, APPEARANCE_TILE_W, APPEARANCE_TILE_H)
 	return atlas
+
+func _build_appearance_payload() -> String:
+	var appearance := {
+		"gender": appearance_gender.selected,
+		"body": int(appearance_body.value),
+		"head": int(appearance_head.value),
+		"hair": int(appearance_hair.value),
+		"eyes": int(appearance_eyes.value),
+		"nose": int(appearance_nose.value),
+		"mouth": int(appearance_mouth.value),
+		"beard": int(appearance_beard.value)
+	}
+	var json := JSON.stringify(appearance)
+	return Marshalls.utf8_to_base64(json)
 
 func _ping_server() -> bool:
 	var reply := await _send_request("PING")
 	return reply == "PONG"
 
-func _request_register(name: String, password: String) -> int:
-	var reply := await _send_request("REGISTER|%s|%s" % [name, password])
+func _request_register(name: String, password: String, appearance_payload: String = "") -> int:
+	var message := "REGISTER|%s|%s" % [name, password]
+	if appearance_payload != "":
+		message += "|" + appearance_payload
+	var reply := await _send_request(message)
 	if reply == "OK":
 		return 0
 	if reply.begins_with("ERR|exists"):
@@ -289,7 +325,8 @@ func _request_login(name: String, password: String) -> Dictionary:
 	var result := {
 		"status": -1,
 		"position": Vector2.ZERO,
-		"access_level": 5
+		"access_level": 5,
+		"appearance": ""
 	}
 	var reply := await _send_request("LOGIN|%s|%s" % [name, password])
 	if reply == "OK":
@@ -304,6 +341,8 @@ func _request_login(name: String, password: String) -> Dictionary:
 			result["position"] = Vector2(x, y)
 			if parts.size() >= 4:
 				result["access_level"] = int(parts[3])
+			if parts.size() >= 5:
+				result["appearance"] = parts[4]
 		return result
 	if reply.begins_with("ERR|name_taken"):
 		result["status"] = 1
@@ -345,6 +384,10 @@ func _enter_game(name: String, position: Vector2, access_level: int) -> void:
 			player.set_player_name(name)
 		else:
 			player.set("player_name", name)
+		if player.has_method("set_appearance_payload"):
+			player.set_appearance_payload(_appearance_payload)
+		else:
+			player.set("appearance_payload", _appearance_payload)
 		if player.has_method("set_spawn_position"):
 			player.set_spawn_position(position)
 		else:

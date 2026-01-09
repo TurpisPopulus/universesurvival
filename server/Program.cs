@@ -117,7 +117,7 @@ while (!cts.IsCancellationRequested)
         continue;
     }
 
-    if (TryParseRegister(message, out var registerName, out var registerPassword, out var registerError))
+    if (TryParseRegister(message, out var registerName, out var registerPassword, out var registerAppearance, out var registerError))
     {
         if (registerError.Length != 0)
         {
@@ -130,7 +130,7 @@ while (!cts.IsCancellationRequested)
         {
             if (!accounts.ContainsKey(registerName))
             {
-                accounts[registerName] = CreateAccount(registerName, registerPassword);
+                accounts[registerName] = CreateAccount(registerName, registerPassword, registerAppearance);
                 created = true;
             }
         }
@@ -174,7 +174,7 @@ while (!cts.IsCancellationRequested)
             {
                 var state = players.TryGetValue(loginName, out var existing)
                     ? existing with { LastSeenUtc = now }
-                    : new PlayerState("login", loginName, 0, 0, now);
+                    : new PlayerState("login", loginName, 0, 0, now, GetAppearance(loginName, accounts, gate));
                 spawnX = state.X;
                 spawnY = state.Y;
                 players[loginName] = state;
@@ -183,9 +183,10 @@ while (!cts.IsCancellationRequested)
         }
 
         var accessLevel = GetAccessLevel(loginName, accounts, gate);
+        var appearancePayload = GetAppearance(loginName, accounts, gate);
         var reply = nameTaken
             ? "ERR|name_taken"
-            : $"OK|{spawnX.ToString("0.###", CultureInfo.InvariantCulture)}|{spawnY.ToString("0.###", CultureInfo.InvariantCulture)}|{accessLevel}";
+            : BuildLoginReply(spawnX, spawnY, accessLevel, appearancePayload);
         await SendToAsync(udp, reply, result.RemoteEndPoint);
         continue;
     }
@@ -290,14 +291,43 @@ while (!cts.IsCancellationRequested)
 
     lock (gate)
     {
+        var appearance = payload.Appearance;
+        if (players.TryGetValue(payload.Name, out var existing))
+        {
+            if (string.IsNullOrWhiteSpace(appearance))
+            {
+                appearance = existing.Appearance;
+            }
+        }
         players[payload.Name] = new PlayerState(
             payload.Id,
             payload.Name,
             payload.X,
             payload.Y,
-            timestamp
+            timestamp,
+            appearance
         );
         endpoints[payload.Name] = result.RemoteEndPoint;
+    }
+
+    if (!string.IsNullOrWhiteSpace(payload.Appearance))
+    {
+        var updated = false;
+        lock (gate)
+        {
+            if (accounts.TryGetValue(payload.Name, out var account))
+            {
+                if (!string.Equals(account.Appearance, payload.Appearance, StringComparison.Ordinal))
+                {
+                    account.Appearance = payload.Appearance;
+                    updated = true;
+                }
+            }
+        }
+        if (updated)
+        {
+            SaveAccounts(accountsPath, accounts, gate);
+        }
     }
 
     Console.WriteLine(
@@ -350,10 +380,11 @@ SaveAll();
 await saveTask;
 await chunkSaveTask;
 
-static bool TryParseRegister(string payload, out string name, out string password, out string error)
+static bool TryParseRegister(string payload, out string name, out string password, out string appearance, out string error)
 {
     name = string.Empty;
     password = string.Empty;
+    appearance = string.Empty;
     error = string.Empty;
 
     if (!payload.StartsWith("REGISTER|", StringComparison.Ordinal))
@@ -370,6 +401,10 @@ static bool TryParseRegister(string payload, out string name, out string passwor
 
     name = parts[1].Trim();
     password = parts[2];
+    if (parts.Length >= 4)
+    {
+        appearance = parts[3].Trim();
+    }
     if (name.Length == 0)
     {
         error = "bad_register";
@@ -417,9 +452,9 @@ static bool TryParsePayload(string payload, out PlayerPacket packet, out string 
     error = string.Empty;
 
     var parts = payload.Split('|');
-    if (parts.Length != 4)
+    if (parts.Length < 4)
     {
-        error = "expected 4 fields: id|name|x|y";
+        error = "expected 4 fields: id|name|x|y (appearance optional)";
         return false;
     }
 
@@ -438,7 +473,8 @@ static bool TryParsePayload(string payload, out PlayerPacket packet, out string 
         return false;
     }
 
-    packet = new PlayerPacket(id, name, x, y);
+    var appearance = parts.Length >= 5 ? parts[4].Trim() : string.Empty;
+    packet = new PlayerPacket(id, name, x, y, appearance);
     return true;
 }
 
@@ -756,7 +792,7 @@ static bool TryValidateLogin(
 static string BuildBroadcast(IEnumerable<PlayerState> players)
 {
     var lines = players.Select(player =>
-        $"{player.Id}|{player.Name}|{player.X.ToString("0.###", CultureInfo.InvariantCulture)}|{player.Y.ToString("0.###", CultureInfo.InvariantCulture)}"
+        $"{player.Id}|{player.Name}|{player.X.ToString("0.###", CultureInfo.InvariantCulture)}|{player.Y.ToString("0.###", CultureInfo.InvariantCulture)}|{player.Appearance}"
     );
     return string.Join('\n', lines);
 }
@@ -1136,7 +1172,7 @@ static void WriteAllTextAtomic(string path, string content)
     }
 }
 
-static Account CreateAccount(string name, string password)
+static Account CreateAccount(string name, string password, string appearance)
 {
     var salt = RandomNumberGenerator.GetBytes(16);
     var hash = HashPassword(password, salt);
@@ -1146,7 +1182,8 @@ static Account CreateAccount(string name, string password)
         PasswordHash = Convert.ToBase64String(hash),
         Salt = Convert.ToBase64String(salt),
         Password = string.Empty,
-        AccessLevel = 5
+        AccessLevel = 5,
+        Appearance = appearance
     };
 }
 
@@ -1290,12 +1327,36 @@ static int FloorDiv(int value, int size)
     return -(((-value - 1) / size) + 1);
 }
 
-readonly record struct PlayerPacket(string Id, string Name, float X, float Y);
+static string GetAppearance(string name, Dictionary<string, Account> accounts, object gate)
+{
+    lock (gate)
+    {
+        if (accounts.TryGetValue(name, out var account))
+        {
+            return account.Appearance ?? string.Empty;
+        }
+    }
+
+    return string.Empty;
+}
+
+static string BuildLoginReply(float x, float y, int accessLevel, string appearance)
+{
+    var reply = $"OK|{x.ToString("0.###", CultureInfo.InvariantCulture)}|{y.ToString("0.###", CultureInfo.InvariantCulture)}|{accessLevel}";
+    if (!string.IsNullOrWhiteSpace(appearance))
+    {
+        reply += "|" + appearance;
+    }
+
+    return reply;
+}
+
+readonly record struct PlayerPacket(string Id, string Name, float X, float Y, string Appearance);
 readonly record struct ChunkRequest(int Cx, int Cy, int LastKnownVersion);
 readonly record struct ObjectsRequest(int Cx, int Cy, int LastKnownVersion);
 readonly record struct ChunkId(int X, int Y);
 
-sealed record PlayerState(string Id, string Name, float X, float Y, DateTime LastSeenUtc);
+sealed record PlayerState(string Id, string Name, float X, float Y, DateTime LastSeenUtc, string Appearance = "");
 
 sealed class ChunkPayload
 {
@@ -1447,4 +1508,5 @@ sealed class Account
     public string Salt { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public int AccessLevel { get; set; }
+    public string Appearance { get; set; } = string.Empty;
 }

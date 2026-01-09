@@ -388,9 +388,9 @@ NpcType
         <div class="card">
           <p>Протокол минимальный, UDP. Команды расширяются, но формат един:</p>
           <pre><code>PING
-REGISTER|name|password
+REGISTER|name|password|appearance
 LOGIN|name|password
-OK|x|y|accessLevel
+OK|x|y|accessLevel|appearance
 ERR|code
 
 CHUNK|cx|cy|lastVersion
@@ -400,6 +400,9 @@ RESOURCES|cx|cy|lastVersion
 OBJECTS|cx|cy|lastVersion
 OBJECT_EDIT|{...}
 NPCS|cx|cy|lastVersion</code></pre>
+          <p>appearance — base64 JSON с внешностью (может отсутствовать).</p>
+          <p>Сервер рассылает список игроков в формате: id|name|x|y|appearance.</p>
+          <p>Если клиент присылает appearance в позиционном пакете, сервер обновляет его в аккаунте.</p>
           <p>Ответы на новые запросы будут JSON-снимками по версиям.</p>
         </div>
       </section>
