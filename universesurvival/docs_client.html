@@ -226,8 +226,9 @@
     terrain.png
     objects.png
     objects_palette.png
-    resources_trees.png
-    resources_palette.png
+  resources/
+    tree_oak.png
+    tree_pine.png
   characters/
     body_*.png
     heads.png
@@ -269,7 +270,7 @@
         <h2>Игровая сцена (main.tscn)</h2>
         <div class="card">
           <ul>
-            <li><code>WorldMap</code>, <code>WorldObjects</code> и <code>WorldResources</code> отображают карту, объекты и ресурсы.</li>
+            <li><code>WorldMap</code> и <code>WorldObjects</code> отображают карту и объекты, <code>WorldResources</code> рендерит ресурсы в два слоя (низ/верх).</li>
             <li><code>Player</code> отвечает за движение и отправку позиционных пакетов.</li>
             <li><code>Ui</code> содержит админское меню и панели редакторов.</li>
             <li><code>LoadingOverlay</code> показывает загрузочный экран до полной синхронизации.</li>
@@ -325,15 +326,17 @@ RESOURCE_EDIT|{...}</code></pre>
       </section>
 
       <section class="section">
-        <h2>Ресурсы: дерево и масштабирование</h2>
+        <h2>Ресурсы: единый PNG и два слоя</h2>
         <div class="card">
-          <p>Ресурсы отображаются в <code>WorldResources.gd</code> как отдельный TileMap-слой и синхронизируются через <code>RESOURCES</code>/<code>RESOURCE_EDIT</code>.</p>
+          <p>Ресурсы отображаются в <code>WorldResources.gd</code> как два TileMap-слоя: нижний (блокирующий) и верхний (визуальный, поверх игрока). Синхронизация идет через <code>RESOURCES</code>/<code>RESOURCE_EDIT</code>.</p>
           <ul>
-            <li>Ресурс состоит из набора тайлов с оффсетами относительно базовой точки.</li>
-            <li>Коллизия задается на уровне тайла: ствол блокирует проход, листва нет.</li>
-            <li>Редактор ресурсов размещает ресурс по базовой клетке (обычно ствол).</li>
+            <li>Каждый ресурс — отдельный PNG (любой размер, не обязательно кратен 32).</li>
+            <li>Базовая клетка ресурса = нижний левый тайл изображения.</li>
+            <li>Нижний ряд тайлов всегда непроходимый (без коллизий, только логическая блокировка).</li>
+            <li>Верхние ряды проходимые и рисуются поверх игрока (игрок всегда за ними, включая голову).</li>
+            <li>После удаления ресурса проход полностью освобождается.</li>
           </ul>
-          <p>Структура <code>data/resource_types.json</code> масштабируется под любые ресурсы:</p>
+          <p>Структура <code>data/resource_types.json</code>:</p>
           <pre><code>{
   "types": [
     {
@@ -344,20 +347,30 @@ RESOURCE_EDIT|{...}</code></pre>
       "drops": [
         { "itemId": "wood_log", "min": 2, "max": 4 }
       ],
-      "texture": "res://tiles/resources_trees.png",
-      "palette": [0, 0],
-      "tiles": [
-        { "atlas": [0, 1], "offset": [0, 0], "blocking": true },
-        { "atlas": [0, 0], "offset": [0, -1], "blocking": false }
-      ]
+      "texture": "res://resources/tree_oak.png"
     }
   ]
 }</code></pre>
           <ul>
-            <li><strong>tiles</strong> - список тайлов ресурса; каждый тайл имеет atlas-координаты и offset.</li>
-            <li><strong>blocking</strong> - задает коллизию только для нужных частей (например, ствол).</li>
-            <li><strong>palette</strong> - координаты иконки ресурса в палитре редактора.</li>
+            <li><strong>texture</strong> - путь к PNG ресурса.</li>
+            <li><strong>typeId</strong> должен совпадать с серверным <code>resource_types.json</code>.</li>
+            <li><strong>gatherTool</strong> и <strong>drops</strong> используются при добыче.</li>
           </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Как добавить ресурс (шаги)</h2>
+        <div class="card">
+          <ul>
+            <li>Положи PNG в <code>res://resources/</code> (например, <code>tree_oak.png</code>).</li>
+            <li>Размер PNG может быть любым: клиент режет изображение на клетки 32x32.</li>
+            <li>Нижний ряд изображения считается основанием и всегда блокирует проход.</li>
+            <li>Верхние ряды проходимые и рисуются поверх игрока.</li>
+            <li>Добавь тип в <code>data/resource_types.json</code> и синхронно в <code>server/resource_types.json</code>.</li>
+            <li>В редакторе ресурсов новый тип появится автоматически в палитре.</li>
+          </ul>
+          <p>Важно: базовая клетка ресурса = нижний левый тайл PNG. Если PNG шире 1 клетки, ресурс занимает несколько тайлов вправо.</p>
         </div>
       </section>
 
@@ -365,8 +378,9 @@ RESOURCE_EDIT|{...}</code></pre>
         <h2>Данные и ассеты</h2>
         <div class="card">
           <ul>
-            <li><code>ui/boot_splash.svg</code> — кастомная заставка на старте клиента.</li>
+            <li><code>ui/boot_splash.svg</code> - кастомная заставка на старте клиента.</li>
             <li><code>data/object_types.json</code> описывает список типов объектов для палитры.</li>
+            <li><code>resources/*.png</code> - отдельные PNG для каждого ресурса.</li>
             <li>Текстуры меню и загрузки: <code>ui/main_menu_bg.png</code>, <code>ui/loading_screen.png</code>.</li>
             <li>Тайлы мира и объектов: <code>tiles/terrain.png</code>, <code>tiles/objects.png</code>.</li>
           </ul>

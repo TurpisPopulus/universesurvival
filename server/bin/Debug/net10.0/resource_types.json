@@ -1,35 +1,25 @@
-{
-  "Types": [
+﻿{
+  "types": [
     {
-      "TypeId": "tree_oak",
-      "DisplayName": "Oak Tree",
-      "MaxAmount": 8,
-      "GatherTool": "axe",
-      "Drops": [
-        {
-          "ItemId": "wood_log",
-          "Min": 2,
-          "Max": 4
-        }
-      ]
+      "typeId": "tree_oak",
+      "displayName": "Oak Tree",
+      "maxAmount": 8,
+      "gatherTool": "axe",
+      "drops": [
+        { "itemId": "wood_log", "min": 2, "max": 4 }
+      ],
+      "texture": "res://resources/tree_oak.png"
     },
     {
-      "TypeId": "tree_pine",
-      "DisplayName": "Pine Tree",
-      "MaxAmount": 10,
-      "GatherTool": "axe",
-      "Drops": [
-        {
-          "ItemId": "wood_log",
-          "Min": 3,
-          "Max": 5
-        },
-        {
-          "ItemId": "apple",
-          "Min": 0,
-          "Max": 1
-        }
-      ]
+      "typeId": "tree_pine",
+      "displayName": "Pine Tree",
+      "maxAmount": 10,
+      "gatherTool": "axe",
+      "drops": [
+        { "itemId": "wood_log", "min": 3, "max": 5 },
+        { "itemId": "apple", "min": 0, "max": 1 }
+      ],
+      "texture": "res://resources/tree_pine.png"
     }
   ]
 }

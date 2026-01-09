@@ -1,25 +1,6 @@
 {
   "X": 1,
   "Y": 1,
-  "Version": 4,
-  "Resources": [
-    {
-      "EntityId": "2e9ea80267e543f38810fbf1844f239d",
-      "TypeId": "tree_oak",
-      "X": 113,
-      "Y": 108,
-      "Amount": 8,
-      "CreatedUtc": "2026-01-09T20:28:10.5703411Z",
-      "UpdatedUtc": "2026-01-09T20:28:10.5703412Z"
-    },
-    {
-      "EntityId": "808c923c81dc46f4ae1e11b0fdc3dcc9",
-      "TypeId": "tree_pine",
-      "X": 113,
-      "Y": 115,
-      "Amount": 10,
-      "CreatedUtc": "2026-01-09T20:28:43.2203124Z",
-      "UpdatedUtc": "2026-01-09T20:28:43.2203125Z"
-    }
-  ]
+  "Version": 6,
+  "Resources": []
 }

@@ -24,10 +24,16 @@ z_index = 1
 script = ExtResource("5_world_objects")
 player_path = NodePath("../Player")
 
-[node name="WorldResources" type="TileMap" parent="."]
+[node name="WorldResources" type="Node2D" parent="."]
 z_index = 0
 script = ExtResource("7_world_resources")
 player_path = NodePath("../Player")
+
+[node name="ResourcesBottom" type="TileMap" parent="WorldResources"]
+z_index = 0
+
+[node name="ResourcesTop" type="TileMap" parent="WorldResources"]
+z_index = 100
 
 [node name="Ui" type="CanvasLayer" parent="."]
 
@@ -154,7 +160,7 @@ offset_right = 244.0
 offset_bottom = 152.0
 theme_override_constants/separation = 8
 
-[node name="ResourcePalette" type="TextureRect" parent="Ui/ResourceEditorPanel/ResourceEditorVBox"]
+[node name="ResourcePalette" type="Control" parent="Ui/ResourceEditorPanel/ResourceEditorVBox"]
 script = ExtResource("8_resource_palette")
 
 [node name="ResourceEditorActions" type="HBoxContainer" parent="Ui/ResourceEditorPanel/ResourceEditorVBox"]

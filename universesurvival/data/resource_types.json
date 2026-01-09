@@ -1,4 +1,4 @@
-{
+﻿{
   "types": [
     {
       "typeId": "tree_oak",
@@ -8,12 +8,7 @@
       "drops": [
         { "itemId": "wood_log", "min": 2, "max": 4 }
       ],
-      "texture": "res://tiles/resources_trees.png",
-      "palette": [0, 0],
-      "tiles": [
-        { "atlas": [0, 1], "offset": [0, 0], "blocking": true },
-        { "atlas": [0, 0], "offset": [0, -1], "blocking": false }
-      ]
+      "texture": "res://resources/tree_oak.png"
     },
     {
       "typeId": "tree_pine",
@@ -24,12 +19,7 @@
         { "itemId": "wood_log", "min": 3, "max": 5 },
         { "itemId": "apple", "min": 0, "max": 1 }
       ],
-      "texture": "res://tiles/resources_trees.png",
-      "palette": [1, 0],
-      "tiles": [
-        { "atlas": [1, 1], "offset": [0, 0], "blocking": true },
-        { "atlas": [1, 0], "offset": [0, -1], "blocking": false }
-      ]
+      "texture": "res://resources/tree_pine.png"
     }
   ]
 }

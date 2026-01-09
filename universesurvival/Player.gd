@@ -11,7 +11,9 @@ extends CharacterBody2D
 @export var remote_timeout_sec: float = 3.0
 @export var remote_scene: PackedScene = preload("res://remote_player.tscn")
 @export var appearance_payload: String = ""
+@export var resources_path: NodePath = NodePath("../WorldResources")
 @onready var appearance: Node = get_node_or_null("Appearance")
+@onready var _collision_shape: CollisionShape2D = get_node_or_null("CollisionShape2D")
 
 signal first_state_sent
 signal server_confirmed
@@ -25,6 +27,8 @@ var _rng := RandomNumberGenerator.new()
 var _loading_blocked := true
 var _initial_state_sent := false
 var _server_confirmed := false
+var _resources
+var _feet_offset := Vector2.ZERO
 
 func _ready() -> void:
 	_rng.randomize()
@@ -32,6 +36,8 @@ func _ready() -> void:
 	var err := _udp.connect_to_host(server_address, server_port)
 	if err != OK:
 		push_warning("UDP connect failed: %s:%s (err %s)" % [server_address, server_port, err])
+	_resources = get_node_or_null(resources_path)
+	_feet_offset = _compute_feet_offset()
 	if appearance != null and appearance_payload != "" and appearance.has_method("set_appearance_payload"):
 		appearance.set_appearance_payload(appearance_payload)
 
@@ -51,6 +57,7 @@ func _physics_process(delta: float) -> void:
 		velocity = velocity.move_toward(Vector2.ZERO, deceleration * delta)
 	else:
 		velocity = velocity.move_toward(target_velocity, acceleration * delta)
+	_apply_resource_blocking(delta)
 	move_and_slide()
 
 	if appearance != null and appearance.has_method("set_move_vector"):
@@ -139,6 +146,49 @@ func _poll_server() -> void:
 
 func _fmt(value: float) -> String:
 	return String.num(value, 3)
+
+func _apply_resource_blocking(delta: float) -> void:
+	if _resources == null or not _resources.has_method("is_world_blocked"):
+		return
+	if velocity == Vector2.ZERO:
+		return
+	var next_pos = global_position + velocity * delta
+	var feet_next = _get_feet_at(next_pos)
+	if not _resources.is_world_blocked(feet_next):
+		return
+	var try_x = _get_feet_at(Vector2(next_pos.x, global_position.y))
+	var try_y = _get_feet_at(Vector2(global_position.x, next_pos.y))
+	var allow_x = not _resources.is_world_blocked(try_x)
+	var allow_y = not _resources.is_world_blocked(try_y)
+	if allow_x and not allow_y:
+		velocity.y = 0.0
+	elif allow_y and not allow_x:
+		velocity.x = 0.0
+	else:
+		velocity = Vector2.ZERO
+
+func _get_feet_at(body_pos: Vector2) -> Vector2:
+	return body_pos + _feet_offset
+
+func _compute_feet_offset() -> Vector2:
+	if appearance != null:
+		var body_sprite: Sprite2D = appearance.get_node_or_null("Body")
+		if body_sprite != null and body_sprite.texture != null:
+			var size = body_sprite.texture.get_size()
+			return body_sprite.position + Vector2(0.0, size.y * 0.5 * body_sprite.scale.y)
+	if _collision_shape == null:
+		return Vector2.ZERO
+	var shape = _collision_shape.shape
+	if shape is CapsuleShape2D:
+		var capsule := shape as CapsuleShape2D
+		return _collision_shape.position + Vector2(0.0, capsule.height * 0.5 + capsule.radius)
+	if shape is RectangleShape2D:
+		var rect := shape as RectangleShape2D
+		return _collision_shape.position + Vector2(0.0, rect.size.y * 0.5)
+	if shape is CircleShape2D:
+		var circle := shape as CircleShape2D
+		return _collision_shape.position + Vector2(0.0, circle.radius)
+	return _collision_shape.position
 
 func set_player_name(name: String) -> void:
 	if name.strip_edges() != "":
