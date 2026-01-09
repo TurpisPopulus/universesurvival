@@ -615,6 +615,21 @@ static int ApplyObjectEdits(ObjectWorld world, ObjectEditPayload update, Diction
     var applied = 0;
     foreach (var change in update.Changes)
     {
+        if (string.Equals(change.TypeId, "__remove__", StringComparison.OrdinalIgnoreCase))
+        {
+            var removeCx = FloorDiv(change.X, Chunk.ChunkSize);
+            var removeCy = FloorDiv(change.Y, Chunk.ChunkSize);
+            var removeChunk = GetOrCreateObjectChunk(world, removeCx, removeCy);
+            var removed = removeChunk.Objects.RemoveAll(obj => obj.X == change.X && obj.Y == change.Y);
+            if (removed > 0)
+            {
+                removeChunk.Version++;
+                removeChunk.IsDirty = true;
+                applied += removed;
+            }
+            continue;
+        }
+
         if (string.IsNullOrWhiteSpace(change.TypeId))
         {
             continue;

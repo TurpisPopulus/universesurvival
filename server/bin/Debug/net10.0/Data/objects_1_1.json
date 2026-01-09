@@ -1,108 +1,8 @@
 {
   "X": 1,
   "Y": 1,
-  "Version": 16,
+  "Version": 29,
   "Objects": [
-    {
-      "EntityId": "264e16eef7a84568b8a8b8bf1646b990",
-      "TypeId": "wall_stone",
-      "X": 113,
-      "Y": 108,
-      "Rotation": 0,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.6047639Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.6047805Z"
-    },
-    {
-      "EntityId": "06b2bc5c8de347409cd0e2b566dad7b9",
-      "TypeId": "wall_stone",
-      "X": 114,
-      "Y": 108,
-      "Rotation": 0,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.6049006Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.6049006Z"
-    },
-    {
-      "EntityId": "b4f3bf6d4ad74f0989459543eddb05ae",
-      "TypeId": "wall_stone",
-      "X": 115,
-      "Y": 108,
-      "Rotation": 0,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.6049021Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.6049021Z"
-    },
-    {
-      "EntityId": "65ac8ef90b46498ca0736a8a1e56855f",
-      "TypeId": "wall_stone",
-      "X": 116,
-      "Y": 108,
-      "Rotation": 0,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.6049028Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.6049028Z"
-    },
-    {
-      "EntityId": "1beaf1ad847347e19e35face9e42e0d6",
-      "TypeId": "wall_stone",
-      "X": 116,
-      "Y": 109,
-      "Rotation": 1,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.6049167Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.6049168Z"
-    },
-    {
-      "EntityId": "3e440ce5bda6424784cb60c9ea6b56e2",
-      "TypeId": "wall_stone",
-      "X": 117,
-      "Y": 109,
-      "Rotation": 2,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.604918Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.604918Z"
-    },
-    {
-      "EntityId": "3f944682e2654ead8b053243d220f752",
-      "TypeId": "wall_stone",
-      "X": 117,
-      "Y": 108,
-      "Rotation": 3,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.6049192Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.6049192Z"
-    },
-    {
-      "EntityId": "b0a1ab58905f4674a9a385eb5b7d6179",
-      "TypeId": "wall_stone",
-      "X": 114,
-      "Y": 109,
-      "Rotation": 0,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.6049199Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.60492Z"
-    },
-    {
-      "EntityId": "1fe88b93abc944ca8edd3e51296e4175",
-      "TypeId": "wall_stone",
-      "X": 117,
-      "Y": 112,
-      "Rotation": 0,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.6049211Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.6049212Z"
-    },
-    {
-      "EntityId": "137c51f4dcf148f39a7e4de29a2cd763",
-      "TypeId": "wall_stone",
-      "X": 118,
-      "Y": 112,
-      "Rotation": 1,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T11:12:56.604922Z",
-      "UpdatedUtc": "2026-01-09T11:12:56.604922Z"
-    },
     {
       "EntityId": "d6d4ccfffe2549208cd2c563b0b40d0a",
       "TypeId": "wall_stone",
@@ -132,36 +32,6 @@
       "IsBlocking": true,
       "CreatedUtc": "2026-01-09T12:20:58.2929434Z",
       "UpdatedUtc": "2026-01-09T12:20:58.2929434Z"
-    },
-    {
-      "EntityId": "af4a4abca93543138f53968d929553c4",
-      "TypeId": "wall_stone",
-      "X": 119,
-      "Y": 108,
-      "Rotation": 1,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T12:20:58.292944Z",
-      "UpdatedUtc": "2026-01-09T12:20:58.292944Z"
-    },
-    {
-      "EntityId": "20ef979eb3e1477fb98918103dfa1962",
-      "TypeId": "wall_stone",
-      "X": 119,
-      "Y": 109,
-      "Rotation": 1,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T12:20:58.2929446Z",
-      "UpdatedUtc": "2026-01-09T12:20:58.2929446Z"
-    },
-    {
-      "EntityId": "eadb54ad7c414d808acd5b5bdf14ced0",
-      "TypeId": "wall_stone",
-      "X": 119,
-      "Y": 110,
-      "Rotation": 1,
-      "IsBlocking": true,
-      "CreatedUtc": "2026-01-09T12:20:58.2929451Z",
-      "UpdatedUtc": "2026-01-09T12:20:58.2929451Z"
     }
   ]
 }

@@ -180,6 +180,9 @@ func set_editor_mode(enabled: bool) -> void:
 	_edit_mode = enabled
 
 func set_selected_tile(tile_id: int) -> void:
+	if tile_id < 0:
+		_selected_tile_id = tile_id
+		return
 	if _tile_atlas.has(tile_id):
 		_selected_tile_id = tile_id
 
@@ -219,6 +222,10 @@ func _place_tile_at(world_pos: Vector2) -> void:
 func _queue_tile_change(tile_pos: Vector2i, tile_id: int) -> void:
 	if _source_id == -1:
 		return
+	if tile_id < 0:
+		_pending_changes[tile_pos] = tile_id
+		erase_cell(0, tile_pos)
+		return
 	if not _tile_atlas.has(tile_id):
 		return
 	_pending_changes[tile_pos] = tile_id
@@ -235,6 +242,9 @@ func _ensure_player() -> void:
 
 func _apply_tile_update(tile_pos: Vector2i, tile_id: int) -> void:
 	if _source_id == -1:
+		return
+	if tile_id < 0:
+		erase_cell(0, tile_pos)
 		return
 	var atlas_coords = _tile_atlas.get(tile_id, TILE_GRASS)
 	set_cell(0, tile_pos, _source_id, atlas_coords)

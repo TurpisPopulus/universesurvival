@@ -320,6 +320,14 @@ func _place_object_at(world_pos: Vector2) -> void:
 	_queue_object_change(cell, _selected_type_id, _selected_rotation)
 
 func _queue_object_change(tile_pos: Vector2i, type_id: String, rotation: int) -> void:
+	if type_id == "__remove__":
+		_pending_changes[tile_pos] = {
+			"type_id": type_id,
+			"rotation": 0
+		}
+		erase_cell(0, tile_pos)
+		_remove_collision_at(tile_pos)
+		return
 	var resolved_rotation = _resolve_rotation(type_id, rotation)
 	if resolved_rotation == null and _tile_defs.is_empty():
 		_load_types()
@@ -343,6 +351,10 @@ func _ensure_player() -> void:
 		_request_visible_chunks(true)
 
 func _apply_object_update(tile_pos: Vector2i, type_id: String, rotation: int) -> bool:
+	if type_id == "__remove__":
+		erase_cell(0, tile_pos)
+		_remove_collision_at(tile_pos)
+		return true
 	var key = _tile_key(type_id, rotation)
 	if not _tile_defs.has(key):
 		key = _tile_key(type_id, 0)

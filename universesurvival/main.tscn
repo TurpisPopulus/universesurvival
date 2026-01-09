@@ -97,6 +97,9 @@ theme_override_constants/separation = 8
 [node name="MapEditorSaveButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
 text = "Сохранить"
 
+[node name="MapEditorDeleteButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
+text = "Удалить"
+
 [node name="MapEditorBackButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
 text = "Назад"
 
@@ -122,6 +125,9 @@ theme_override_constants/separation = 8
 
 [node name="ObjectEditorSaveButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
 text = "Сохранить"
+
+[node name="ObjectEditorDeleteButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
+text = "Удалить"
 
 [node name="ObjectEditorBackButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
 text = "Назад"
