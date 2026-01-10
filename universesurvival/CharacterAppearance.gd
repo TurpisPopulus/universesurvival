@@ -5,18 +5,18 @@ const APPEARANCE_TILE_H := 128
 const APPEARANCE_FRAME_COUNT := 6
 const APPEARANCE_FRAME_TIME := 0.18
 
-const BODY_ATLAS_PATHS := [
-	"res://characters/body_skinny.png",
-	"res://characters/body_normal.png",
-	"res://characters/body_fat.png"
+const BODY_ATLASES := [
+	preload("res://characters/body_skinny.png"),
+	preload("res://characters/body_normal.png"),
+	preload("res://characters/body_fat.png")
 ]
-const HEAD_ATLAS_PATH := "res://characters/heads.png"
-const HAIR_MALE_ATLAS_PATH := "res://characters/hair_male.png"
-const HAIR_FEMALE_ATLAS_PATH := "res://characters/hair_female.png"
-const BEARD_ATLAS_PATH := "res://characters/beards.png"
-const EYES_ATLAS_PATH := "res://characters/eyes.png"
-const NOSES_ATLAS_PATH := "res://characters/noses.png"
-const MOUTHS_ATLAS_PATH := "res://characters/mouths.png"
+const HEAD_ATLAS := preload("res://characters/heads.png")
+const HAIR_MALE_ATLAS := preload("res://characters/hair_male.png")
+const HAIR_FEMALE_ATLAS := preload("res://characters/hair_female.png")
+const BEARD_ATLAS := preload("res://characters/beards.png")
+const EYES_ATLAS := preload("res://characters/eyes.png")
+const NOSES_ATLAS := preload("res://characters/noses.png")
+const MOUTHS_ATLAS := preload("res://characters/mouths.png")
 
 @onready var body_layer: Sprite2D = $Body
 @onready var head_layer: Sprite2D = $Head
@@ -95,19 +95,14 @@ func _apply_payload(payload: String) -> void:
 	_update_layers()
 
 func _load_textures() -> void:
-	var body_textures: Array[Texture2D] = []
-	for path in BODY_ATLAS_PATHS:
-		var tex := load(path) as Texture2D
-		if tex != null:
-			body_textures.append(tex)
-	_textures["body"] = body_textures
-	_textures["head"] = load(HEAD_ATLAS_PATH) as Texture2D
-	_textures["hair_male"] = load(HAIR_MALE_ATLAS_PATH) as Texture2D
-	_textures["hair_female"] = load(HAIR_FEMALE_ATLAS_PATH) as Texture2D
-	_textures["beard"] = load(BEARD_ATLAS_PATH) as Texture2D
-	_textures["eyes"] = load(EYES_ATLAS_PATH) as Texture2D
-	_textures["nose"] = load(NOSES_ATLAS_PATH) as Texture2D
-	_textures["mouth"] = load(MOUTHS_ATLAS_PATH) as Texture2D
+	_textures["body"] = BODY_ATLASES
+	_textures["head"] = HEAD_ATLAS
+	_textures["hair_male"] = HAIR_MALE_ATLAS
+	_textures["hair_female"] = HAIR_FEMALE_ATLAS
+	_textures["beard"] = BEARD_ATLAS
+	_textures["eyes"] = EYES_ATLAS
+	_textures["nose"] = NOSES_ATLAS
+	_textures["mouth"] = MOUTHS_ATLAS
 
 func _update_layers() -> void:
 	var body_index := int(_appearance["body"]) - 1

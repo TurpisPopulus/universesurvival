@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KiloServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4a92f3361acf25aebe39c30e22276743d4fa740c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f17d11ea279198188232675ee46ec131adc259e0")]
 [assembly: System.Reflection.AssemblyProductAttribute("KiloServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KiloServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

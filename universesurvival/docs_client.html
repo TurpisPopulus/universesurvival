@@ -329,6 +329,7 @@ RESOURCE_EDIT|{...}</code></pre>
             <li>Тело: <code>body_skinny.png</code>, <code>body_normal.png</code>, <code>body_fat.png</code>.</li>
             <li>Головы, волосы, бороды, лицо: отдельные атласы с 6 кадрами анимации.</li>
             <li>Настройки внешности сохраняются как base64 JSON в аккаунте.</li>
+            <li>Атласы предзагружаются через <code>preload()</code>, чтобы не блокировать старт в <code>_ready()</code>.</li>
           </ul>
         </div>
       </section>
