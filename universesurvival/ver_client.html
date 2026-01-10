@@ -120,6 +120,56 @@
         <h1>История версий</h1>
         <p>Формат: v0.000 / дата / список изменений.</p>
         <div class="card">
+          <strong>v0.069 / 2026-01-10</strong>
+          <ul>
+            <li>NetworkCrypto: типизирована переменная chunk для сборки без warnings-as-errors.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.068 / 2026-01-10</strong>
+          <ul>
+            <li>Исправлены ошибки GDScript в NetworkCrypto и добавлены типы для UDP-пакетов.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.067 / 2026-01-10</strong>
+          <ul>
+            <li>NetworkCrypto переведен на потоковый HMAC-SHA256 вместо AES.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.066 / 2026-01-10</strong>
+          <ul>
+            <li>NetworkCrypto переведен на CTR поверх AES-ECB для совместимости с Godot.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.065 / 2026-01-10</strong>
+          <ul>
+            <li>Все UDP-обмены клиента переведены на SEC1-шифрование (карта/объекты/ресурсы/игрок).</li>
+            <li>Добавлен общий модуль NetworkCrypto.gd.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.064 / 2026-01-10</strong>
+          <ul>
+            <li>docs_client уточнен по хранению ключа шифрования на клиенте.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.063 / 2026-01-10</strong>
+          <ul>
+            <li>Добавлено шифрование UDP: SEC1-конверт, AES-256-CTR и HMAC-SHA256.</li>
+            <li>docs_client обновлен под защищенный протокол и ключи.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.062 / 2026-01-10</strong>
+          <ul>
+            <li>docs_client дополнен PING/PONG и разделом о рисках UDP.</li>
+          </ul>
+        </div>
+        <div class="card">
           <strong>v0.061 / 2026-01-10</strong>
           <ul>
             <li>Блокировка ресурсов учитывает нижний тайл игрока 32x32.</li>

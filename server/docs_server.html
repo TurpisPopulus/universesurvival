@@ -232,9 +232,14 @@
       <section class="section">
         <h2>Протокол</h2>
         <div class="card">
+          <p>Все сообщения идут в защищенном конверте <code>SEC1</code>:</p>
+          <pre><code>SEC1|base64(version|nonce|ciphertext|mac)</code></pre>
+          <p>Внутри шифрованного payload передаются команды:</p>
           <pre><code>PING
+PONG
 REGISTER|name|password|appearance
 LOGIN|name|password
+OK
 OK|x|y|accessLevel|appearance
 ERR|code
 
@@ -249,7 +254,24 @@ RESOURCE_EDIT|{...}</code></pre>
             <li><strong>appearance</strong> - base64 JSON с внешностью (может отсутствовать).</li>
             <li><strong>id|name|x|y|appearance</strong> - позиционный пакет, рассылается всем.</li>
             <li><strong>CHUNK</strong> и <strong>OBJECTS</strong> возвращают JSON только при росте версии.</li>
+            <li><strong>OK</strong> без параметров возвращается при успешной регистрации.</li>
+            <li><strong>PING</strong>/<strong>PONG</strong> - проверка доступности.</li>
           </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Безопасность и шифрование UDP</h2>
+        <div class="card">
+          <ul>
+            <li>Все UDP-пакеты шифруются и подписываются: потоковый XOR на базе HMAC-SHA256 + HMAC-SHA256 (encrypt-then-MAC).</li>
+            <li>Пароли, appearance и координаты не уходят в открытом виде.</li>
+            <li>Ключ общий для клиента и сервера: <code>server/Program.cs</code> и <code>universesurvival/NetworkCrypto.gd</code> должны совпадать.</li>
+            <li>Сервер принимает ключ из <code>UNIVERSE_NET_KEY</code> (base64), иначе использует дефолт из кода.</li>
+            <li>Неверный MAC или версия пакета приводят к отбраковке сообщения.</li>
+            <li>Это защищает от пассивного перехвата, но общий ключ можно извлечь из клиента; для полноценной защиты нужен обмен ключами.</li>
+          </ul>
+          <p>Для публичного сервера рекомендуется ключевой обмен (например, DTLS/Noise) и ротация ключей.</p>
         </div>
       </section>
 

@@ -1,5 +1,7 @@
 extends TileMap
 
+const NetworkCrypto = preload("res://NetworkCrypto.gd")
+
 signal initial_load_progress(loaded: int, total: int)
 signal initial_load_completed
 
@@ -215,7 +217,11 @@ func _request_visible_chunks(force: bool) -> void:
 func _request_chunk(chunk: Vector2i) -> void:
 	var last_version = int(_chunk_versions.get(chunk, -1))
 	var payload = "%s|%s|%s|%s" % [OBJECTS_PREFIX, chunk.x, chunk.y, last_version]
-	var err = _udp.put_packet(payload.to_utf8_buffer())
+	var packet: PackedByteArray = NetworkCrypto.encode_message(payload)
+	if packet.size() == 0:
+		push_warning("WorldObjects: failed to encrypt chunk request")
+		return
+	var err = _udp.put_packet(packet)
 	if err != OK:
 		push_warning("WorldObjects: failed to request chunk %s (err %s)" % [chunk, err])
 		return
@@ -245,7 +251,10 @@ func _poll_chunk_responses() -> void:
 		if _udp.get_packet_error() != OK:
 			push_warning("WorldObjects: UDP receive failed (err %s)" % _udp.get_packet_error())
 			return
-		var text = data.get_string_from_utf8()
+		var text = NetworkCrypto.decode_message(data)
+		if text == "":
+			push_warning("WorldObjects: rejected insecure packet")
+			continue
 		var parsed = JSON.parse_string(text)
 		if parsed == null or typeof(parsed) != TYPE_DICTIONARY:
 			continue
@@ -311,7 +320,11 @@ func save_object_changes() -> void:
 		"changes": changes
 	}
 	var message = OBJECT_EDIT_PREFIX + JSON.stringify(payload)
-	var err = _udp.put_packet(message.to_utf8_buffer())
+	var packet: PackedByteArray = NetworkCrypto.encode_message(message)
+	if packet.size() == 0:
+		push_warning("WorldObjects: failed to encrypt object update")
+		return
+	var err = _udp.put_packet(packet)
 	if err != OK:
 		push_warning("WorldObjects: failed to send object update (err %s)" % err)
 		return

@@ -283,7 +283,11 @@
         <h2>Сеть и протокол</h2>
         <div class="card">
           <p>Клиент общается с сервером через UDP-сообщения:</p>
+          <p>Все сообщения идут в защищенном конверте <code>SEC1</code>:</p>
+          <pre><code>SEC1|base64(version|nonce|ciphertext|mac)</code></pre>
+          <p>Внутри шифрованного payload передаются команды:</p>
           <pre><code>PING
+PONG
 REGISTER|name|password|appearance
 LOGIN|name|password
 id|name|x|y|appearance
@@ -296,7 +300,23 @@ RESOURCE_EDIT|{...}</code></pre>
           <ul>
             <li><strong>appearance</strong> - base64 JSON с внешностью, передается при регистрации/входе и в позиционных пакетах.</li>
             <li><strong>CHUNK</strong> и <strong>OBJECTS</strong> возвращают JSON-снимки только при изменении версии.</li>
+            <li><strong>PING</strong>/<strong>PONG</strong> - проверка доступности сервера.</li>
           </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Безопасность и шифрование UDP</h2>
+        <div class="card">
+          <ul>
+            <li>Все UDP-пакеты шифруются и подписываются: потоковый XOR на базе HMAC-SHA256 + HMAC-SHA256.</li>
+            <li>Пароли, appearance и координаты не уходят в открытом виде.</li>
+            <li>Ключ общий для клиента и сервера: <code>universesurvival/NetworkCrypto.gd</code> и <code>server/Program.cs</code> должны совпадать.</li>
+            <li>Ключ хранится в клиентском скрипте, поэтому его можно извлечь при реверсе.</li>
+            <li>Если MAC не совпадает, пакет считается поддельным и игнорируется.</li>
+            <li>Общий ключ можно извлечь из клиента; для полноценной защиты нужен обмен ключами и ротация.</li>
+          </ul>
+          <p>Для публичных серверов используйте DTLS/Noise или отдельный безопасный канал для обмена ключами.</p>
         </div>
       </section>
 

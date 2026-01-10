@@ -6,12 +6,19 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Buffers.Binary;
 
 var port = 7777;
 if (args.Length > 0 && int.TryParse(args[0], out var parsedPort))
 {
     port = parsedPort;
 }
+
+const string SecurePrefix = "SEC1|";
+const string SharedKeyBase64 = "vux6wYEw7jG+5bcgE3Y75s1RnwNy0OQ//EAUp7XNk2M=";
+var sharedKey = LoadSharedKey();
+var encKey = DeriveKey(sharedKey, 0x01);
+var macKey = DeriveKey(sharedKey, 0x02);
 
 var gate = new object();
 var baseDir = AppContext.BaseDirectory;
@@ -51,7 +58,7 @@ void SaveAll()
 
 using var udp = new UdpClient(port);
 Console.WriteLine($"UDP server listening on 0.0.0.0:{port}");
-Console.WriteLine("Payload format: id|name|x|y");
+Console.WriteLine("Payload format: SEC1|base64(version+nonce+ciphertext+mac)");
 Console.WriteLine($"World loaded: {world.Chunks.Count} chunks");
 Console.WriteLine($"Objects loaded: {objectWorld.Chunks.Count} chunks");
 Console.WriteLine($"Resources loaded: {resourceWorld.Chunks.Count} chunks");
@@ -162,7 +169,7 @@ while (!cts.IsCancellationRequested)
 
         if (targets.Count > 0)
         {
-            var response = BuildBroadcast(snapshot);
+            var response = EncryptMessage(BuildBroadcast(snapshot), encKey, macKey);
             var bytes = Encoding.UTF8.GetBytes(response);
             var sentTo = new HashSet<string>(StringComparer.Ordinal);
             foreach (var endpoint in targets)
@@ -210,9 +217,15 @@ while (!cts.IsCancellationRequested)
     }
 
     var message = Encoding.UTF8.GetString(result.Buffer);
+    if (!TryDecryptSecureMessage(message, encKey, macKey, out var decrypted, out var decryptError))
+    {
+        Console.WriteLine($"Rejected packet from {result.RemoteEndPoint}: {decryptError}");
+        continue;
+    }
+    message = decrypted;
     if (message.Equals("PING", StringComparison.Ordinal))
     {
-        await SendToAsync(udp, "PONG", result.RemoteEndPoint);
+        await SendToAsync(udp, "PONG", result.RemoteEndPoint, encKey, macKey);
         continue;
     }
 
@@ -220,7 +233,7 @@ while (!cts.IsCancellationRequested)
     {
         if (registerError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + registerError, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + registerError, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
@@ -236,12 +249,12 @@ while (!cts.IsCancellationRequested)
 
         if (!created)
         {
-            await SendToAsync(udp, "ERR|exists", result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|exists", result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
         SaveAccounts(accountsPath, accounts, gate);
-        await SendToAsync(udp, "OK", result.RemoteEndPoint);
+        await SendToAsync(udp, "OK", result.RemoteEndPoint, encKey, macKey);
         continue;
     }
 
@@ -249,13 +262,13 @@ while (!cts.IsCancellationRequested)
     {
         if (loginError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + loginError, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + loginError, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
         if (!TryValidateLogin(loginName, loginPassword, accounts, gate, out var loginReply, out var upgraded))
         {
-            await SendToAsync(udp, "ERR|" + loginReply, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + loginReply, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
         if (upgraded)
@@ -287,7 +300,7 @@ while (!cts.IsCancellationRequested)
         var reply = nameTaken
             ? "ERR|name_taken"
             : BuildLoginReply(spawnX, spawnY, accessLevel, appearancePayload);
-        await SendToAsync(udp, reply, result.RemoteEndPoint);
+        await SendToAsync(udp, reply, result.RemoteEndPoint, encKey, macKey);
         continue;
     }
 
@@ -295,7 +308,7 @@ while (!cts.IsCancellationRequested)
     {
         if (chunkError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + chunkError, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + chunkError, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
@@ -310,7 +323,7 @@ while (!cts.IsCancellationRequested)
         }
         if (chunkResponse != null)
         {
-            await SendToAsync(udp, chunkResponse, result.RemoteEndPoint);
+            await SendToAsync(udp, chunkResponse, result.RemoteEndPoint, encKey, macKey);
         }
         continue;
     }
@@ -319,7 +332,7 @@ while (!cts.IsCancellationRequested)
     {
         if (objectsError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + objectsError, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + objectsError, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
@@ -334,7 +347,7 @@ while (!cts.IsCancellationRequested)
         }
         if (objectsResponse != null)
         {
-            await SendToAsync(udp, objectsResponse, result.RemoteEndPoint);
+            await SendToAsync(udp, objectsResponse, result.RemoteEndPoint, encKey, macKey);
         }
         continue;
     }
@@ -343,7 +356,7 @@ while (!cts.IsCancellationRequested)
     {
         if (resourcesError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + resourcesError, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + resourcesError, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
@@ -358,7 +371,7 @@ while (!cts.IsCancellationRequested)
         }
         if (resourcesResponse != null)
         {
-            await SendToAsync(udp, resourcesResponse, result.RemoteEndPoint);
+            await SendToAsync(udp, resourcesResponse, result.RemoteEndPoint, encKey, macKey);
         }
         continue;
     }
@@ -368,7 +381,7 @@ while (!cts.IsCancellationRequested)
         if (editError.Length != 0)
         {
             Console.WriteLine($"Edit rejected from {result.RemoteEndPoint}: {editError}");
-            await SendToAsync(udp, "ERR|" + editError, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + editError, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
@@ -386,7 +399,7 @@ while (!cts.IsCancellationRequested)
         if (objectEditError.Length != 0)
         {
             Console.WriteLine($"Object edit rejected from {result.RemoteEndPoint}: {objectEditError}");
-            await SendToAsync(udp, "ERR|" + objectEditError, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + objectEditError, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
@@ -404,7 +417,7 @@ while (!cts.IsCancellationRequested)
         if (resourceEditError.Length != 0)
         {
             Console.WriteLine($"Resource edit rejected from {result.RemoteEndPoint}: {resourceEditError}");
-            await SendToAsync(udp, "ERR|" + resourceEditError, result.RemoteEndPoint);
+            await SendToAsync(udp, "ERR|" + resourceEditError, result.RemoteEndPoint, encKey, macKey);
             continue;
         }
 
@@ -427,7 +440,7 @@ while (!cts.IsCancellationRequested)
     var duplicate = IsNameTaken(payload.Name, result.RemoteEndPoint, players, endpoints, gate, activeWindow, timestamp);
     if (duplicate)
     {
-        await SendToAsync(udp, "ERR|name_taken", result.RemoteEndPoint);
+        await SendToAsync(udp, "ERR|name_taken", result.RemoteEndPoint, encKey, macKey);
         continue;
     }
 
@@ -1643,9 +1656,10 @@ static bool VerifyPassword(string password, string saltBase64, string hashBase64
     }
 }
 
-static async Task SendToAsync(UdpClient udp, string message, IPEndPoint endpoint)
+static async Task SendToAsync(UdpClient udp, string message, IPEndPoint endpoint, byte[] encKey, byte[] macKey)
 {
-    var bytes = Encoding.UTF8.GetBytes(message);
+    var secured = EncryptMessage(message, encKey, macKey);
+    var bytes = Encoding.UTF8.GetBytes(secured);
     try
     {
         await udp.SendAsync(bytes, bytes.Length, endpoint);
@@ -1654,6 +1668,143 @@ static async Task SendToAsync(UdpClient udp, string message, IPEndPoint endpoint
     {
         Console.WriteLine($"Send error: {ex.Message}");
     }
+}
+
+static byte[] LoadSharedKey()
+{
+    var keyBase64 = Environment.GetEnvironmentVariable("UNIVERSE_NET_KEY");
+    if (string.IsNullOrWhiteSpace(keyBase64))
+    {
+        keyBase64 = SharedKeyBase64;
+    }
+
+    try
+    {
+        var key = Convert.FromBase64String(keyBase64);
+        if (key.Length != 32)
+        {
+            throw new InvalidOperationException("Shared key must be 32 bytes (base64).");
+        }
+        return key;
+    }
+    catch (FormatException ex)
+    {
+        throw new InvalidOperationException("Shared key must be valid base64.", ex);
+    }
+}
+
+static byte[] DeriveKey(byte[] masterKey, byte tag)
+{
+    var tagged = new byte[1 + masterKey.Length];
+    tagged[0] = tag;
+    Buffer.BlockCopy(masterKey, 0, tagged, 1, masterKey.Length);
+    return SHA256.HashData(tagged);
+}
+
+static bool TryDecryptSecureMessage(string payload, byte[] encKey, byte[] macKey, out string message, out string error)
+{
+    message = string.Empty;
+    error = string.Empty;
+    if (!payload.StartsWith(SecurePrefix, StringComparison.Ordinal))
+    {
+        error = "missing_secure_prefix";
+        return false;
+    }
+
+    var base64 = payload[SecurePrefix.Length..];
+    byte[] data;
+    try
+    {
+        data = Convert.FromBase64String(base64);
+    }
+    catch (FormatException)
+    {
+        error = "invalid_base64";
+        return false;
+    }
+
+    if (data.Length < 1 + 16 + 32)
+    {
+        error = "payload_too_short";
+        return false;
+    }
+
+    var version = data[0];
+    if (version != 1)
+    {
+        error = "unsupported_version";
+        return false;
+    }
+
+    var macStart = data.Length - 32;
+    var signed = new byte[macStart];
+    Buffer.BlockCopy(data, 0, signed, 0, macStart);
+    var mac = new byte[32];
+    Buffer.BlockCopy(data, macStart, mac, 0, 32);
+
+    using var hmac = new HMACSHA256(macKey);
+    var expected = hmac.ComputeHash(signed);
+    if (!CryptographicOperations.FixedTimeEquals(mac, expected))
+    {
+        error = "bad_mac";
+        return false;
+    }
+
+    var nonce = new byte[16];
+    Buffer.BlockCopy(data, 1, nonce, 0, 16);
+    var cipherLen = macStart - 1 - 16;
+    var cipher = new byte[cipherLen];
+    Buffer.BlockCopy(data, 17, cipher, 0, cipherLen);
+    var plain = AesCtrTransform(encKey, nonce, cipher);
+    message = Encoding.UTF8.GetString(plain);
+    return true;
+}
+
+static string EncryptMessage(string message, byte[] encKey, byte[] macKey)
+{
+    var nonce = RandomNumberGenerator.GetBytes(16);
+    var plain = Encoding.UTF8.GetBytes(message);
+    var cipher = AesCtrTransform(encKey, nonce, plain);
+    var signed = new byte[1 + nonce.Length + cipher.Length];
+    signed[0] = 1;
+    Buffer.BlockCopy(nonce, 0, signed, 1, nonce.Length);
+    Buffer.BlockCopy(cipher, 0, signed, 1 + nonce.Length, cipher.Length);
+    using var hmac = new HMACSHA256(macKey);
+    var mac = hmac.ComputeHash(signed);
+    var payload = new byte[signed.Length + mac.Length];
+    Buffer.BlockCopy(signed, 0, payload, 0, signed.Length);
+    Buffer.BlockCopy(mac, 0, payload, signed.Length, mac.Length);
+    return SecurePrefix + Convert.ToBase64String(payload);
+}
+
+static byte[] AesCtrTransform(byte[] key, byte[] nonce, byte[] input)
+{
+    var output = new byte[input.Length];
+    ulong counter = 0;
+    var offset = 0;
+    while (offset < input.Length)
+    {
+        var keystream = BuildKeystreamBlock(key, nonce, counter);
+        var chunk = Math.Min(keystream.Length, input.Length - offset);
+        for (var i = 0; i < chunk; i++)
+        {
+            output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
+        }
+        offset += chunk;
+        counter++;
+    }
+    return output;
+}
+
+static byte[] BuildKeystreamBlock(byte[] key, byte[] nonce, ulong counter)
+{
+    var counterBytes = new byte[8];
+    BinaryPrimitives.WriteUInt64BigEndian(counterBytes, counter);
+    var data = new byte[nonce.Length + counterBytes.Length];
+    Buffer.BlockCopy(nonce, 0, data, 0, nonce.Length);
+    Buffer.BlockCopy(counterBytes, 0, data, nonce.Length, counterBytes.Length);
+    using var hmac = new HMACSHA256(key);
+    return hmac.ComputeHash(data);
 }
 
 static int GetAccessLevel(string name, Dictionary<string, Account> accounts, object gate)

@@ -120,6 +120,32 @@
         <h1>История версий</h1>
         <p>Формат: v0.000 / дата / список изменений.</p>
         <div class="card">
+          <strong>v0.040 / 2026-01-10</strong>
+          <ul>
+            <li>Заменен шифр на потоковый XOR на базе HMAC-SHA256 для совместимости с Godot.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.039 / 2026-01-10</strong>
+          <ul>
+            <li>docs_server уточнен: добавлен источник ключа через UNIVERSE_NET_KEY.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.038 / 2026-01-10</strong>
+          <ul>
+            <li>Добавлено шифрование UDP: SEC1-конверт, AES-256-CTR и HMAC-SHA256.</li>
+            <li>docs_server обновлен под защищенный протокол и ключи.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>v0.037 / 2026-01-10</strong>
+          <ul>
+            <li>docs_server дополнен PING/PONG и ответом OK для регистрации.</li>
+            <li>Добавлен раздел о рисках UDP без шифрования и открытых данных.</li>
+          </ul>
+        </div>
+        <div class="card">
           <strong>v0.036 / 2026-01-10</strong>
           <ul>
             <li>TargetFramework исправлен на net8.0 для актуальной версии .NET.</li>

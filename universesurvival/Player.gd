@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+const NetworkCrypto = preload("res://NetworkCrypto.gd")
+
 @export var speed: float = 220.0
 @export var acceleration: float = 2000.0
 @export var deceleration: float = 2000.0
@@ -80,7 +82,11 @@ func _send_state() -> void:
 	]
 	if appearance_payload != "":
 		payload += "|" + appearance_payload
-	var err := _udp.put_packet(payload.to_utf8_buffer())
+	var packet: PackedByteArray = NetworkCrypto.encode_message(payload)
+	if packet.size() == 0:
+		push_warning("UDP send failed: encryption error")
+		return
+	var err := _udp.put_packet(packet)
 	if err != OK:
 		push_warning("UDP send failed (err %s)" % err)
 		return
@@ -95,7 +101,11 @@ func _poll_server() -> void:
 		if _udp.get_packet_error() != OK:
 			push_warning("UDP receive failed (err %s)" % _udp.get_packet_error())
 			return
-		_last_reply = data.get_string_from_utf8()
+		var decoded := NetworkCrypto.decode_message(data)
+		if decoded == "":
+			push_warning("UDP packet rejected (invalid or insecure)")
+			continue
+		_last_reply = decoded
 		for line in _last_reply.split("\n", false):
 			var parts := line.split("|")
 			if parts.size() < 4:

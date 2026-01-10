@@ -1,5 +1,7 @@
 ﻿extends Control
 
+const NetworkCrypto = preload("res://NetworkCrypto.gd")
+
 const SERVER_ADDRESS := "127.0.0.1"
 const SERVER_PORT := 7777
 const REQUEST_TIMEOUT_SEC := 1.5
@@ -492,11 +494,17 @@ func _send_request(payload: String) -> String:
 	var err := peer.connect_to_host(SERVER_ADDRESS, SERVER_PORT)
 	if err != OK:
 		return ""
-	peer.put_packet(payload.to_utf8_buffer())
+	var packet: PackedByteArray = NetworkCrypto.encode_message(payload)
+	if packet.size() == 0:
+		return ""
+	peer.put_packet(packet)
 	var start := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - start < int(REQUEST_TIMEOUT_SEC * 1000.0):
 		if peer.get_available_packet_count() > 0:
-			return peer.get_packet().get_string_from_utf8()
+			var reply: String = NetworkCrypto.decode_message(peer.get_packet())
+			if reply != "":
+				return reply
+			return ""
 		await get_tree().process_frame
 	return ""
 
