@@ -41,6 +41,14 @@ var chunkSaveInterval = TimeSpan.FromSeconds(30);
 var logInterval = TimeSpan.FromSeconds(1);
 var lastLogByPlayer = new Dictionary<string, DateTime>(StringComparer.Ordinal);
 var broadcastInterval = TimeSpan.FromMilliseconds(33);
+var rateLimitPerSecond = GetEnvDouble("UNIVERSE_RATE_LIMIT_PER_SEC", 120);
+var rateLimitBurst = GetEnvDouble("UNIVERSE_RATE_LIMIT_BURST", 200);
+var rateLimitLogInterval = TimeSpan.FromSeconds(2);
+var rateLimitIdleWindow = TimeSpan.FromSeconds(30);
+var rateLimitCleanupInterval = TimeSpan.FromSeconds(10);
+var nextRateLimitCleanupUtc = DateTime.UtcNow + rateLimitCleanupInterval;
+var rateLimitEnabled = rateLimitPerSecond > 0 && rateLimitBurst > 0;
+var rateLimits = new Dictionary<string, RateLimitState>(StringComparer.Ordinal);
 
 if (NormalizeAccounts(accounts))
 {
@@ -66,6 +74,14 @@ Console.WriteLine($"[DATA] baseDir   = {baseDir}");
 Console.WriteLine($"[DATA] dataDir   = {dataDir}");
 Console.WriteLine($"[DATA] playersPath = {playersPath}");
 Console.WriteLine($"[DATA] accountsPath = {accountsPath}");
+if (rateLimitEnabled)
+{
+    Console.WriteLine($"[NET] rate limit = {rateLimitPerSecond:0.##}/s (burst {rateLimitBurst:0.##})");
+}
+else
+{
+    Console.WriteLine("[NET] rate limit = disabled");
+}
 Console.WriteLine("Press Ctrl+C to stop.");
 
 var cts = new CancellationTokenSource();
@@ -214,6 +230,32 @@ while (!cts.IsCancellationRequested)
         Console.WriteLine($"Receive error: {ex.Message}");
         receiveTask = null;
         continue;
+    }
+
+    var receivedAt = DateTime.UtcNow;
+    if (rateLimitEnabled && receivedAt >= nextRateLimitCleanupUtc)
+    {
+        CleanupRateLimits(rateLimits, receivedAt, rateLimitIdleWindow);
+        nextRateLimitCleanupUtc = receivedAt + rateLimitCleanupInterval;
+    }
+
+    if (rateLimitEnabled)
+    {
+        if (!TryConsumeRateLimit(
+                rateLimits,
+                result.RemoteEndPoint,
+                receivedAt,
+                rateLimitPerSecond,
+                rateLimitBurst,
+                rateLimitLogInterval,
+                out var rateLimitShouldLog))
+        {
+            if (rateLimitShouldLog)
+            {
+                Console.WriteLine($"Rate limit: dropped packet from {result.RemoteEndPoint}");
+            }
+            continue;
+        }
     }
 
     var message = Encoding.UTF8.GetString(result.Buffer);
@@ -1670,6 +1712,90 @@ static async Task SendToAsync(UdpClient udp, string message, IPEndPoint endpoint
     }
 }
 
+static double GetEnvDouble(string name, double fallback)
+{
+    var raw = Environment.GetEnvironmentVariable(name);
+    if (string.IsNullOrWhiteSpace(raw))
+    {
+        return fallback;
+    }
+
+    if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value >= 0)
+    {
+        return value;
+    }
+
+    return fallback;
+}
+
+static bool TryConsumeRateLimit(
+    Dictionary<string, RateLimitState> limiter,
+    IPEndPoint endpoint,
+    DateTime nowUtc,
+    double perSecond,
+    double burst,
+    TimeSpan logInterval,
+    out bool shouldLog)
+{
+    var key = endpoint.ToString();
+    if (!limiter.TryGetValue(key, out var state))
+    {
+        state = new RateLimitState
+        {
+            Tokens = burst,
+            LastRefillUtc = nowUtc,
+            LastSeenUtc = nowUtc,
+            LastLogUtc = DateTime.MinValue
+        };
+    }
+    else
+    {
+        var elapsed = (nowUtc - state.LastRefillUtc).TotalSeconds;
+        if (elapsed > 0)
+        {
+            state.Tokens = Math.Min(burst, state.Tokens + elapsed * perSecond);
+            state.LastRefillUtc = nowUtc;
+        }
+
+        state.LastSeenUtc = nowUtc;
+    }
+
+    if (state.Tokens >= 1)
+    {
+        state.Tokens -= 1;
+        limiter[key] = state;
+        shouldLog = false;
+        return true;
+    }
+
+    shouldLog = nowUtc - state.LastLogUtc >= logInterval;
+    if (shouldLog)
+    {
+        state.LastLogUtc = nowUtc;
+    }
+
+    limiter[key] = state;
+    return false;
+}
+
+static void CleanupRateLimits(Dictionary<string, RateLimitState> limiter, DateTime nowUtc, TimeSpan idleWindow)
+{
+    if (limiter.Count == 0)
+    {
+        return;
+    }
+
+    var stale = limiter
+        .Where(entry => nowUtc - entry.Value.LastSeenUtc > idleWindow)
+        .Select(entry => entry.Key)
+        .ToList();
+
+    foreach (var key in stale)
+    {
+        limiter.Remove(key);
+    }
+}
+
 static byte[] LoadSharedKey()
 {
     var keyBase64 = Environment.GetEnvironmentVariable("UNIVERSE_NET_KEY");
@@ -2173,4 +2299,12 @@ sealed class Account
     public string Password { get; set; } = string.Empty;
     public int AccessLevel { get; set; }
     public string Appearance { get; set; } = string.Empty;
+}
+
+sealed class RateLimitState
+{
+    public double Tokens { get; set; }
+    public DateTime LastRefillUtc { get; set; }
+    public DateTime LastSeenUtc { get; set; }
+    public DateTime LastLogUtc { get; set; }
 }

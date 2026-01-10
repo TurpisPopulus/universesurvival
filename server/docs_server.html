@@ -276,6 +276,20 @@ RESOURCE_EDIT|{...}</code></pre>
       </section>
 
       <section class="section">
+        <h2>Антифлуд и Rate Limiting</h2>
+        <div class="card">
+          <ul>
+            <li>Сервер применяет token-bucket на UDP-эндпоинт: по умолчанию 120 пакетов/сек, burst 200.</li>
+            <li>Пакеты сверх лимита отбрасываются до расшифровки, чтобы не тратить CPU.</li>
+            <li>Настройки читаются из окружения: <code>UNIVERSE_RATE_LIMIT_PER_SEC</code> и <code>UNIVERSE_RATE_LIMIT_BURST</code>.</li>
+            <li>Значение 0 для лимитов отключает защиту.</li>
+            <li>Состояния лимитера очищаются после 30 секунд без пакетов.</li>
+          </ul>
+          <p>Это базовая защита от флуда; для публичных серверов используйте отдельные сетевые фильтры/DDoS-защиту.</p>
+        </div>
+      </section>
+
+      <section class="section">
         <h2>Аккаунты и вход</h2>
         <div class="card">
           <ul>

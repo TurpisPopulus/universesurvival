@@ -301,6 +301,7 @@ RESOURCE_EDIT|{...}</code></pre>
             <li><strong>appearance</strong> - base64 JSON с внешностью, передается при регистрации/входе и в позиционных пакетах.</li>
             <li><strong>CHUNK</strong> и <strong>OBJECTS</strong> возвращают JSON-снимки только при изменении версии.</li>
             <li><strong>PING</strong>/<strong>PONG</strong> - проверка доступности сервера.</li>
+            <li>Сервер применяет rate limiting на UDP-пакеты (по умолчанию 120 пакетов/сек, burst 200): лишние пакеты отбрасываются.</li>
           </ul>
         </div>
       </section>
