@@ -1,0 +1,14 @@
+{
+  "Types": [
+    {
+      "TypeId": "wall_wood",
+      "DisplayName": "Wood Wall",
+      "IsBlocking": true
+    },
+    {
+      "TypeId": "wall_stone",
+      "DisplayName": "Stone Wall",
+      "IsBlocking": true
+    }
+  ]
+}

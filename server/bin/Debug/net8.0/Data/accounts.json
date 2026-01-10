@@ -1,0 +1,18 @@
+[
+  {
+    "Name": "test6",
+    "PasswordHash": "8oBlGTWUqBeUO9IXyRukAwT8Ikqr8bpK1EsduAh/Trc=",
+    "Salt": "pjQWu7dV8Ijsspy5vNkWZQ==",
+    "Password": "",
+    "AccessLevel": 5,
+    "Appearance": "eyJiZWFyZCI6MSwiYm9keSI6MiwiZXllcyI6MiwiZ2VuZGVyIjowLCJoYWlyIjoyLCJoZWFkIjoyLCJtb3V0aCI6MSwibm9zZSI6MX0="
+  },
+  {
+    "Name": "admin",
+    "PasswordHash": "UigkFIyTtRXJbckC35egQ2SLZpcwHRONPyIJQYn628g=",
+    "Salt": "TnB/rSXOYmKCK/extbRHkw==",
+    "Password": "",
+    "AccessLevel": 5,
+    "Appearance": "eyJiZWFyZCI6OCwiYm9keSI6MiwiZXllcyI6NywiZ2VuZGVyIjowLCJoYWlyIjo2LCJoZWFkIjo3LCJtb3V0aCI6Niwibm9zZSI6N30="
+  }
+]

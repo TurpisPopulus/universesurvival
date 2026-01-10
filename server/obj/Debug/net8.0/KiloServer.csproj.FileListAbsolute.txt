@@ -1,0 +1,15 @@
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\bin\Debug\net8.0\KiloServer.exe
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\bin\Debug\net8.0\KiloServer.deps.json
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\bin\Debug\net8.0\KiloServer.runtimeconfig.json
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\bin\Debug\net8.0\KiloServer.dll
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\bin\Debug\net8.0\KiloServer.pdb
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\KiloServer.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\KiloServer.AssemblyInfoInputs.cache
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\KiloServer.AssemblyInfo.cs
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\KiloServer.csproj.CoreCompileInputs.cache
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\KiloServer.sourcelink.json
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\KiloServer.dll
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\refint\KiloServer.dll
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\KiloServer.pdb
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\KiloServer.genruntimeconfig.cache
+C:\Users\user\Documents\universesurvival_git\universesurvival-1\server\obj\Debug\net8.0\ref\KiloServer.dll
