@@ -290,6 +290,37 @@ RESOURCE_EDIT|{...}</code></pre>
       </section>
 
       <section class="section">
+        <h2>Мониторинг производительности</h2>
+        <div class="card">
+          <ul>
+            <li>Сервер собирает метрики производительности: CPU usage, память (RAM), количество пакетов и активных игроков.</li>
+            <li>Статистика логируется периодически с интервалом, настраиваемым через переменную окружения <code>UNIVERSE_PERF_STATS_INTERVAL</code> (по умолчанию 60 секунд).</li>
+            <li>Значение 0 отключает логирование метрик.</li>
+            <li>Формат лога: <code>[PERF] uptime=1h 23m | cpu=2.5% | mem=45.67MB | players=5 | pkts: recv=12345 sent=23456 dropped=10</code></li>
+          </ul>
+          <p><strong>Сохранение статистики:</strong></p>
+          <ul>
+            <li>Метрики сохраняются в CSV-файлы в директории <code>Data/perf_stats/</code>.</li>
+            <li>Каждый день создается новый файл: <code>perf_2026-01-11.csv</code>.</li>
+            <li>Формат CSV: <code>Timestamp,UptimeSeconds,CpuPercent,MemoryMB,ActivePlayers,PacketsReceived,PacketsSent,PacketsDropped</code></li>
+            <li>Сохранение в файл можно отключить через переменную окружения <code>UNIVERSE_PERF_STATS_TO_FILE=false</code> (по умолчанию включено).</li>
+            <li>CSV-файлы можно открыть в Excel, Google Sheets или анализировать скриптами для построения графиков.</li>
+          </ul>
+          <p><strong>Метрики:</strong></p>
+          <ul>
+            <li><strong>uptime</strong> — время работы сервера с момента запуска.</li>
+            <li><strong>cpu</strong> — процент использования CPU (среднее по всем ядрам).</li>
+            <li><strong>mem</strong> — потребление оперативной памяти в мегабайтах.</li>
+            <li><strong>players</strong> — количество активных игроков (исключая состояние login).</li>
+            <li><strong>pkts recv</strong> — общее количество принятых UDP-пакетов.</li>
+            <li><strong>pkts sent</strong> — общее количество отправленных UDP-пакетов.</li>
+            <li><strong>pkts dropped</strong> — количество отброшенных пакетов из-за rate limiting.</li>
+          </ul>
+          <p>Мониторинг помогает отслеживать нагрузку на сервер, выявлять проблемы с производительностью и определять необходимость масштабирования или оптимизации.</p>
+        </div>
+      </section>
+
+      <section class="section">
         <h2>Аккаунты и вход</h2>
         <div class="card">
           <ul>

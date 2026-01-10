@@ -50,6 +50,20 @@ var nextRateLimitCleanupUtc = DateTime.UtcNow + rateLimitCleanupInterval;
 var rateLimitEnabled = rateLimitPerSecond > 0 && rateLimitBurst > 0;
 var rateLimits = new Dictionary<string, RateLimitState>(StringComparer.Ordinal);
 
+var perfStatsInterval = TimeSpan.FromSeconds(GetEnvDouble("UNIVERSE_PERF_STATS_INTERVAL", 60));
+var perfStatsEnabled = perfStatsInterval.TotalSeconds > 0;
+var perfStatsToFile = GetEnvBool("UNIVERSE_PERF_STATS_TO_FILE", true);
+var nextPerfStatsUtc = DateTime.UtcNow + perfStatsInterval;
+var totalPacketsReceived = 0L;
+var totalPacketsSent = 0L;
+var totalPacketsDropped = 0L;
+var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+var perfStatsDir = Path.Combine(dataDir, "perf_stats");
+if (perfStatsEnabled && perfStatsToFile)
+{
+    Directory.CreateDirectory(perfStatsDir);
+}
+
 if (NormalizeAccounts(accounts))
 {
     SaveAccounts(accountsPath, accounts, gate);
@@ -81,6 +95,15 @@ if (rateLimitEnabled)
 else
 {
     Console.WriteLine("[NET] rate limit = disabled");
+}
+if (perfStatsEnabled)
+{
+    var fileInfo = perfStatsToFile ? $" (saved to {perfStatsDir})" : " (console only)";
+    Console.WriteLine($"[PERF] statistics logging = every {perfStatsInterval.TotalSeconds:0.##}s{fileInfo}");
+}
+else
+{
+    Console.WriteLine("[PERF] statistics logging = disabled");
 }
 Console.WriteLine("Press Ctrl+C to stop.");
 
@@ -199,6 +222,7 @@ while (!cts.IsCancellationRequested)
                 try
                 {
                     await udp.SendAsync(bytes, bytes.Length, endpoint);
+                    totalPacketsSent++;
                 }
                 catch (Exception ex)
                 {
@@ -233,10 +257,29 @@ while (!cts.IsCancellationRequested)
     }
 
     var receivedAt = DateTime.UtcNow;
+    totalPacketsReceived++;
+
     if (rateLimitEnabled && receivedAt >= nextRateLimitCleanupUtc)
     {
         CleanupRateLimits(rateLimits, receivedAt, rateLimitIdleWindow);
         nextRateLimitCleanupUtc = receivedAt + rateLimitCleanupInterval;
+    }
+
+    if (perfStatsEnabled && receivedAt >= nextPerfStatsUtc)
+    {
+        LogPerformanceStats(
+            currentProcess,
+            totalPacketsReceived,
+            totalPacketsSent,
+            totalPacketsDropped,
+            players,
+            endpoints,
+            gate,
+            activeWindow,
+            receivedAt,
+            perfStatsToFile,
+            perfStatsDir);
+        nextPerfStatsUtc = receivedAt + perfStatsInterval;
     }
 
     if (rateLimitEnabled)
@@ -250,6 +293,7 @@ while (!cts.IsCancellationRequested)
                 rateLimitLogInterval,
                 out var rateLimitShouldLog))
         {
+            totalPacketsDropped++;
             if (rateLimitShouldLog)
             {
                 Console.WriteLine($"Rate limit: dropped packet from {result.RemoteEndPoint}");
@@ -267,7 +311,10 @@ while (!cts.IsCancellationRequested)
     message = decrypted;
     if (message.Equals("PING", StringComparison.Ordinal))
     {
-        await SendToAsync(udp, "PONG", result.RemoteEndPoint, encKey, macKey);
+        if (await SendToAsync(udp, "PONG", result.RemoteEndPoint, encKey, macKey))
+        {
+            totalPacketsSent++;
+        }
         continue;
     }
 
@@ -275,7 +322,10 @@ while (!cts.IsCancellationRequested)
     {
         if (registerError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + registerError, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + registerError, result.RemoteEndPoint, encKey, macKey))
+        {
+            totalPacketsSent++;
+        }
             continue;
         }
 
@@ -291,12 +341,18 @@ while (!cts.IsCancellationRequested)
 
         if (!created)
         {
-            await SendToAsync(udp, "ERR|exists", result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|exists", result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
 
         SaveAccounts(accountsPath, accounts, gate);
-        await SendToAsync(udp, "OK", result.RemoteEndPoint, encKey, macKey);
+        if (await SendToAsync(udp, "OK", result.RemoteEndPoint, encKey, macKey))
+        {
+            totalPacketsSent++;
+        }
         continue;
     }
 
@@ -304,13 +360,19 @@ while (!cts.IsCancellationRequested)
     {
         if (loginError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + loginError, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + loginError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
 
         if (!TryValidateLogin(loginName, loginPassword, accounts, gate, out var loginReply, out var upgraded))
         {
-            await SendToAsync(udp, "ERR|" + loginReply, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + loginReply, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
         if (upgraded)
@@ -342,7 +404,10 @@ while (!cts.IsCancellationRequested)
         var reply = nameTaken
             ? "ERR|name_taken"
             : BuildLoginReply(spawnX, spawnY, accessLevel, appearancePayload);
-        await SendToAsync(udp, reply, result.RemoteEndPoint, encKey, macKey);
+        if (await SendToAsync(udp, reply, result.RemoteEndPoint, encKey, macKey))
+        {
+            totalPacketsSent++;
+        }
         continue;
     }
 
@@ -350,7 +415,10 @@ while (!cts.IsCancellationRequested)
     {
         if (chunkError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + chunkError, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + chunkError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
 
@@ -365,7 +433,10 @@ while (!cts.IsCancellationRequested)
         }
         if (chunkResponse != null)
         {
-            await SendToAsync(udp, chunkResponse, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, chunkResponse, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
         }
         continue;
     }
@@ -374,7 +445,10 @@ while (!cts.IsCancellationRequested)
     {
         if (objectsError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + objectsError, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + objectsError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
 
@@ -389,7 +463,10 @@ while (!cts.IsCancellationRequested)
         }
         if (objectsResponse != null)
         {
-            await SendToAsync(udp, objectsResponse, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, objectsResponse, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
         }
         continue;
     }
@@ -398,7 +475,10 @@ while (!cts.IsCancellationRequested)
     {
         if (resourcesError.Length != 0)
         {
-            await SendToAsync(udp, "ERR|" + resourcesError, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + resourcesError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
 
@@ -413,7 +493,10 @@ while (!cts.IsCancellationRequested)
         }
         if (resourcesResponse != null)
         {
-            await SendToAsync(udp, resourcesResponse, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, resourcesResponse, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
         }
         continue;
     }
@@ -423,7 +506,10 @@ while (!cts.IsCancellationRequested)
         if (editError.Length != 0)
         {
             Console.WriteLine($"Edit rejected from {result.RemoteEndPoint}: {editError}");
-            await SendToAsync(udp, "ERR|" + editError, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + editError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
 
@@ -441,7 +527,10 @@ while (!cts.IsCancellationRequested)
         if (objectEditError.Length != 0)
         {
             Console.WriteLine($"Object edit rejected from {result.RemoteEndPoint}: {objectEditError}");
-            await SendToAsync(udp, "ERR|" + objectEditError, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + objectEditError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
 
@@ -459,7 +548,10 @@ while (!cts.IsCancellationRequested)
         if (resourceEditError.Length != 0)
         {
             Console.WriteLine($"Resource edit rejected from {result.RemoteEndPoint}: {resourceEditError}");
-            await SendToAsync(udp, "ERR|" + resourceEditError, result.RemoteEndPoint, encKey, macKey);
+            if (await SendToAsync(udp, "ERR|" + resourceEditError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
             continue;
         }
 
@@ -482,7 +574,10 @@ while (!cts.IsCancellationRequested)
     var duplicate = IsNameTaken(payload.Name, result.RemoteEndPoint, players, endpoints, gate, activeWindow, timestamp);
     if (duplicate)
     {
-        await SendToAsync(udp, "ERR|name_taken", result.RemoteEndPoint, encKey, macKey);
+        if (await SendToAsync(udp, "ERR|name_taken", result.RemoteEndPoint, encKey, macKey))
+        {
+            totalPacketsSent++;
+        }
         continue;
     }
 
@@ -1698,17 +1793,19 @@ static bool VerifyPassword(string password, string saltBase64, string hashBase64
     }
 }
 
-static async Task SendToAsync(UdpClient udp, string message, IPEndPoint endpoint, byte[] encKey, byte[] macKey)
+static async Task<bool> SendToAsync(UdpClient udp, string message, IPEndPoint endpoint, byte[] encKey, byte[] macKey)
 {
     var secured = EncryptMessage(message, encKey, macKey);
     var bytes = Encoding.UTF8.GetBytes(secured);
     try
     {
         await udp.SendAsync(bytes, bytes.Length, endpoint);
+        return true;
     }
     catch (Exception ex)
     {
         Console.WriteLine($"Send error: {ex.Message}");
+        return false;
     }
 }
 
@@ -1723,6 +1820,32 @@ static double GetEnvDouble(string name, double fallback)
     if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value >= 0)
     {
         return value;
+    }
+
+    return fallback;
+}
+
+static bool GetEnvBool(string name, bool fallback)
+{
+    var raw = Environment.GetEnvironmentVariable(name);
+    if (string.IsNullOrWhiteSpace(raw))
+    {
+        return fallback;
+    }
+
+    if (bool.TryParse(raw, out var value))
+    {
+        return value;
+    }
+
+    if (raw.Equals("1", StringComparison.Ordinal) || raw.Equals("yes", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    if (raw.Equals("0", StringComparison.Ordinal) || raw.Equals("no", StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
     }
 
     return fallback;
@@ -2065,6 +2188,80 @@ static string BuildLoginReply(float x, float y, int accessLevel, string appearan
     }
 
     return reply;
+}
+
+static void LogPerformanceStats(
+    System.Diagnostics.Process process,
+    long totalReceived,
+    long totalSent,
+    long totalDropped,
+    Dictionary<string, PlayerState> players,
+    Dictionary<string, IPEndPoint> endpoints,
+    object gate,
+    TimeSpan activeWindow,
+    DateTime now,
+    bool saveToFile,
+    string perfStatsDir)
+{
+    try
+    {
+        process.Refresh();
+        var cpuTime = process.TotalProcessorTime;
+        var memoryMB = process.WorkingSet64 / (1024.0 * 1024.0);
+        var uptime = DateTime.UtcNow - process.StartTime.ToUniversalTime();
+
+        int activePlayers;
+        lock (gate)
+        {
+            activePlayers = players.Values
+                .Count(player => now - player.LastSeenUtc <= activeWindow &&
+                                !string.Equals(player.Id, "login", StringComparison.Ordinal));
+        }
+
+        var cpuPercent = (cpuTime.TotalMilliseconds / uptime.TotalMilliseconds) * 100.0 / Environment.ProcessorCount;
+
+        var logMessage = $"[PERF] uptime={FormatTimeSpan(uptime)} | cpu={cpuPercent:0.##}% | mem={memoryMB:0.##}MB | " +
+                         $"players={activePlayers} | pkts: recv={totalReceived} sent={totalSent} dropped={totalDropped}";
+        Console.WriteLine(logMessage);
+
+        if (saveToFile)
+        {
+            var dateStr = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var fileName = $"perf_{dateStr}.csv";
+            var filePath = Path.Combine(perfStatsDir, fileName);
+            var fileExists = File.Exists(filePath);
+
+            using var writer = new StreamWriter(filePath, append: true, Encoding.UTF8);
+            if (!fileExists)
+            {
+                writer.WriteLine("Timestamp,UptimeSeconds,CpuPercent,MemoryMB,ActivePlayers,PacketsReceived,PacketsSent,PacketsDropped");
+            }
+
+            var timestamp = now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            writer.WriteLine($"{timestamp},{uptime.TotalSeconds:0.##},{cpuPercent:0.##},{memoryMB:0.##},{activePlayers},{totalReceived},{totalSent},{totalDropped}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PERF] Error collecting stats: {ex.Message}");
+    }
+}
+
+static string FormatTimeSpan(TimeSpan ts)
+{
+    if (ts.TotalDays >= 1)
+    {
+        return $"{(int)ts.TotalDays}d {ts.Hours}h";
+    }
+    if (ts.TotalHours >= 1)
+    {
+        return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+    }
+    if (ts.TotalMinutes >= 1)
+    {
+        return $"{(int)ts.TotalMinutes}m {ts.Seconds}s";
+    }
+    return $"{ts.Seconds}s";
 }
 
 readonly record struct PlayerPacket(string Id, string Name, float X, float Y, string Appearance);
