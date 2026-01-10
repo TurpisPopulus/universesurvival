@@ -301,6 +301,7 @@ RESOURCE_EDIT|{...}</code></pre>
             <li><strong>appearance</strong> - base64 JSON с внешностью, передается при регистрации/входе и в позиционных пакетах.</li>
             <li><strong>CHUNK</strong> и <strong>OBJECTS</strong> возвращают JSON-снимки только при изменении версии.</li>
             <li><strong>PING</strong>/<strong>PONG</strong> - проверка доступности сервера.</li>
+            <li>Клиент отправляет запросы чанков только пока версия не подтверждена (initial load, переход в новую область, локальные изменения).</li>
             <li>Сервер применяет rate limiting на UDP-пакеты (по умолчанию 120 пакетов/сек, burst 200): лишние пакеты отбрасываются.</li>
           </ul>
         </div>
@@ -343,6 +344,7 @@ RESOURCE_EDIT|{...}</code></pre>
             <li>Редактор объектов использует <code>ObjectPalette.gd</code>, отправляет <code>OBJECT_EDIT</code>.</li>
             <li>Редактор ресурсов использует <code>ResourcePalette.gd</code>, отправляет <code>RESOURCE_EDIT</code>.</li>
             <li>Локальные правки накапливаются и отправляются одной пачкой.</li>
+            <li>После сохранения клиент запрашивает обновленные чанки только для затронутых координат.</li>
           </ul>
         </div>
       </section>

@@ -28,6 +28,7 @@ var _edit_mode = false
 var _selected_tile_id = 0
 var _pending_changes: Dictionary = {}
 var _chunk_versions: Dictionary = {}
+var _chunk_confirmed: Dictionary = {}
 var _poll_accum := 0.0
 
 var _tile_atlas: Dictionary = {}
@@ -46,6 +47,7 @@ func _ready() -> void:
 
 	_loaded_chunks.clear()
 	_chunk_versions.clear()
+	_chunk_confirmed.clear()
 	_setup_tileset()
 	_request_visible_chunks(true)
 
@@ -99,7 +101,7 @@ func _refresh_player_chunk() -> void:
 	if player_chunk == _last_player_chunk:
 		return
 	_last_player_chunk = player_chunk
-	_request_visible_chunks(true)
+	_request_visible_chunks(false)
 
 func _request_visible_chunks(force: bool) -> void:
 	if _player == null:
@@ -111,7 +113,7 @@ func _request_visible_chunks(force: bool) -> void:
 		for cx in range(player_chunk.x - VIEW_DISTANCE_CHUNKS, player_chunk.x + VIEW_DISTANCE_CHUNKS + 1):
 			var chunk = Vector2i(cx, cy)
 			needed[chunk] = true
-			_request_chunk(chunk)
+			_request_chunk(chunk, force)
 
 	_track_initial_chunks(needed)
 	var to_unload = []
@@ -121,8 +123,10 @@ func _request_visible_chunks(force: bool) -> void:
 	for chunk in to_unload:
 		_unload_chunk(chunk)
 
-func _request_chunk(chunk: Vector2i) -> void:
+func _request_chunk(chunk: Vector2i, force: bool) -> void:
 	if _source_id == -1:
+		return
+	if not force and _chunk_confirmed.get(chunk, false):
 		return
 	var last_version = int(_chunk_versions.get(chunk, -1))
 	var payload = "CHUNK|%s|%s|%s" % [chunk.x, chunk.y, last_version]
@@ -143,6 +147,7 @@ func _unload_chunk(chunk: Vector2i) -> void:
 			erase_cell(0, tile_pos)
 	_loaded_chunks.erase(chunk)
 	_chunk_versions.erase(chunk)
+	_chunk_confirmed.erase(chunk)
 
 func _world_to_chunk(world: Vector2) -> Vector2i:
 	var local_pos = to_local(world)
@@ -176,6 +181,7 @@ func _poll_chunk_responses() -> void:
 			_apply_pending_for_chunk(chunk)
 		_loaded_chunks[chunk] = true
 		_chunk_versions[chunk] = version
+		_chunk_confirmed[chunk] = true
 		_update_initial_progress()
 
 func _apply_chunk(chunk: Vector2i, tiles: Variant) -> void:
@@ -291,11 +297,13 @@ func _request_chunks_for_changes(changes: Array) -> void:
 		if requested.has(chunk):
 			continue
 		requested[chunk] = true
-		_request_chunk(chunk)
+		_chunk_confirmed[chunk] = false
+		_request_chunk(chunk, true)
 
 func _reload_visible_chunks_from_server() -> void:
 	_loaded_chunks.clear()
 	_chunk_versions.clear()
+	_chunk_confirmed.clear()
 	clear()
 	_request_visible_chunks(true)
 
