@@ -1,0 +1,40 @@
+{
+  "types": [
+    {
+      "typeId": "block_1x1",
+      "displayName": "Block 1x1",
+      "size": [1, 1],
+      "color": "#FF000080"
+    },
+    {
+      "typeId": "block_2x1",
+      "displayName": "Block 2x1",
+      "size": [2, 1],
+      "color": "#FF000080"
+    },
+    {
+      "typeId": "block_1x2",
+      "displayName": "Block 1x2",
+      "size": [1, 2],
+      "color": "#FF000080"
+    },
+    {
+      "typeId": "block_2x2",
+      "displayName": "Block 2x2",
+      "size": [2, 2],
+      "color": "#FF000080"
+    },
+    {
+      "typeId": "block_3x3",
+      "displayName": "Block 3x3",
+      "size": [3, 3],
+      "color": "#FF000080"
+    },
+    {
+      "typeId": "block_4x4",
+      "displayName": "Block 4x4",
+      "size": [4, 4],
+      "color": "#FF000080"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "types": [
+    {
+      "surfaceId": 0,
+      "name": "ground",
+      "displayName": "Ground",
+      "speedMod": 1.0,
+      "damage": 0,
+      "blocking": false
+    },
+    {
+      "surfaceId": 1,
+      "name": "water_shallow",
+      "displayName": "Shallow Water",
+      "speedMod": 0.7,
+      "damage": 0,
+      "blocking": false
+    },
+    {
+      "surfaceId": 2,
+      "name": "water_deep",
+      "displayName": "Deep Water",
+      "speedMod": 0.3,
+      "damage": 1,
+      "blocking": true
+    },
+    {
+      "surfaceId": 3,
+      "name": "lava",
+      "displayName": "Lava",
+      "speedMod": 0.5,
+      "damage": 10,
+      "blocking": false
+    },
+    {
+      "surfaceId": 4,
+      "name": "ice",
+      "displayName": "Ice",
+      "speedMod": 1.2,
+      "damage": 0,
+      "blocking": false
+    },
+    {
+      "surfaceId": 5,
+      "name": "mud",
+      "displayName": "Mud",
+      "speedMod": 0.4,
+      "damage": 0,
+      "blocking": false
+    }
+  ]
+}

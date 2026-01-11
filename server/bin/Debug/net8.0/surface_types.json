@@ -1,0 +1,28 @@
+{
+  "Types": [
+    {
+      "SurfaceId": 0,
+      "Name": "ground",
+      "DisplayName": "Ground",
+      "SpeedMod": 1,
+      "Damage": 0,
+      "Blocking": false
+    },
+    {
+      "SurfaceId": 1,
+      "Name": "water_shallow",
+      "DisplayName": "Shallow Water",
+      "SpeedMod": 0.7,
+      "Damage": 0,
+      "Blocking": false
+    },
+    {
+      "SurfaceId": 2,
+      "Name": "water_deep",
+      "DisplayName": "Deep Water",
+      "SpeedMod": 0.3,
+      "Damage": 1,
+      "Blocking": true
+    }
+  ]
+}

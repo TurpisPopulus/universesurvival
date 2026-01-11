@@ -207,12 +207,16 @@
   run_server.bat           # запуск
   object_types.json        # каталог типов объектов
   resource_types.json      # каталог типов ресурсов
+  blocking_types.json      # каталог типов блокировок
+  surface_types.json       # каталог типов поверхностей
   accounts.json            # аккаунты (пароли + доступ)
   players.json             # состояния игроков
   Data/
     chunk_*.json            # чанки карты
     objects_*.json          # чанки объектов
     resources_*.json        # чанки ресурсов
+    blocking_*.json         # чанки блокировок
+    surface_*.json          # чанки поверхностей
     accounts.json
     players.json</code></pre>
       </section>
@@ -249,7 +253,11 @@ EDIT|{...}
 OBJECTS|cx|cy|lastVersion
 OBJECT_EDIT|{...}
 RESOURCES|cx|cy|lastVersion
-RESOURCE_EDIT|{...}</code></pre>
+RESOURCE_EDIT|{...}
+BLOCKING|cx|cy|lastVersion
+BLOCKING_EDIT|{...}
+SURFACE|cx|cy|lastVersion
+SURFACE_EDIT|{...}</code></pre>
           <ul>
             <li><strong>appearance</strong> - base64 JSON с внешностью (может отсутствовать).</li>
             <li><strong>id|name|x|y|appearance</strong> - позиционный пакет, рассылается всем.</li>
@@ -402,6 +410,122 @@ RESOURCE_EDIT|{...}</code></pre>
     { "entityId": "...", "typeId": "tree_oak", "x": 150, "y": 210, "amount": 8 }
   ]
 }</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Блокировки (Blocking)</h2>
+        <div class="card">
+          <ul>
+            <li>Каталог типов блокировок: <code>blocking_types.json</code> (typeId, displayName, size, color).</li>
+            <li><code>BLOCKING|cx|cy|lastVersion</code> возвращает блокировки чанка по версии.</li>
+            <li><code>BLOCKING_EDIT</code> применяет изменения и повышает версию чанка блокировок.</li>
+            <li>Удаление блокировки: <code>typeId="__remove__"</code>.</li>
+            <li>Блокировки могут занимать несколько тайлов (size: [2, 2] = 2x2 тайла).</li>
+          </ul>
+          <pre><code>// blocking_0_0.json
+{
+  "x": 0,
+  "y": 0,
+  "version": 5,
+  "entries": [
+    { "entityId": "...", "typeId": "block_2x2", "x": 150, "y": 210 }
+  ]
+}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Настройка типов блокировок</h2>
+        <div class="card">
+          <p>Файл <code>blocking_types.json</code> описывает размеры и визуальные параметры блокировок.</p>
+          <pre><code>{
+  "types": [
+    {
+      "typeId": "block_1x1",
+      "displayName": "Block 1x1",
+      "size": [1, 1],
+      "color": "#FF000080"
+    },
+    {
+      "typeId": "block_2x2",
+      "displayName": "Block 2x2",
+      "size": [2, 2],
+      "color": "#FF000080"
+    }
+  ]
+}</code></pre>
+          <ul>
+            <li><strong>typeId</strong> - уникальный id типа блокировки.</li>
+            <li><strong>size</strong> - размер блокировки в тайлах [width, height].</li>
+            <li><strong>color</strong> - цвет отображения в редакторе (RGBA hex).</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Поверхности (Surface)</h2>
+        <div class="card">
+          <ul>
+            <li>Каталог типов поверхностей: <code>surface_types.json</code> (surfaceId, name, speedMod, damage, blocking).</li>
+            <li><code>SURFACE|cx|cy|lastVersion</code> возвращает поверхности чанка по версии.</li>
+            <li><code>SURFACE_EDIT</code> применяет изменения и повышает версию чанка поверхностей.</li>
+            <li>Поверхности влияют на скорость движения, урон и проходимость.</li>
+          </ul>
+          <pre><code>// surface_0_0.json
+{
+  "x": 0,
+  "y": 0,
+  "version": 3,
+  "surfaces": [
+    { "x": 150, "y": 210, "surfaceId": 2 }
+  ]
+}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Настройка типов поверхностей</h2>
+        <div class="card">
+          <p>Файл <code>surface_types.json</code> описывает параметры поверхностей.</p>
+          <pre><code>{
+  "types": [
+    {
+      "surfaceId": 0,
+      "name": "ground",
+      "displayName": "Ground",
+      "color": "#8B451380",
+      "speedMod": 1.0,
+      "damage": 0,
+      "blocking": false
+    },
+    {
+      "surfaceId": 1,
+      "name": "water_shallow",
+      "displayName": "Shallow Water",
+      "color": "#87CEEB80",
+      "speedMod": 0.7,
+      "damage": 0,
+      "blocking": false
+    },
+    {
+      "surfaceId": 2,
+      "name": "water_deep",
+      "displayName": "Deep Water",
+      "color": "#000080C0",
+      "speedMod": 0.3,
+      "damage": 1,
+      "blocking": true
+    }
+  ]
+}</code></pre>
+          <ul>
+            <li><strong>surfaceId</strong> - уникальный числовой id поверхности.</li>
+            <li><strong>speedMod</strong> - множитель скорости движения (1.0 = нормальная).</li>
+            <li><strong>damage</strong> - урон в секунду при нахождении на поверхности.</li>
+            <li><strong>blocking</strong> - блокирует ли проход (true = непроходимо).</li>
+            <li><strong>color</strong> - цвет отображения в редакторе (RGBA hex).</li>
+          </ul>
         </div>
       </section>
 

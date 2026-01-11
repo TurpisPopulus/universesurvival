@@ -65,7 +65,7 @@ func _physics_process(delta: float) -> void:
 
 	_update_surface_effects(delta)
 	var effective_speed = speed * _current_speed_mod
-	var target_velocity := input * effective_speed
+	var target_velocity: Vector2 = input * effective_speed
 	if input == Vector2.ZERO:
 		velocity = velocity.move_toward(Vector2.ZERO, deceleration * delta)
 	else:
