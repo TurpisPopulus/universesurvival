@@ -8,27 +8,25 @@ extends Node2D
 @onready var admin_resource_editor_button: Button = get_node_or_null("Ui/AdminMenu/AdminMargin/AdminVBox/AdminResourceEditorButton")
 @onready var admin_back_button: Button = get_node_or_null("Ui/AdminMenu/AdminMargin/AdminVBox/AdminBackButton")
 @onready var map_editor_panel: Control = get_node_or_null("Ui/MapEditorPanel")
-@onready var map_editor_save_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorVBox/MapEditorActions/MapEditorSaveButton")
-@onready var map_editor_delete_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorVBox/MapEditorActions/MapEditorDeleteButton")
-@onready var map_editor_back_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorVBox/MapEditorActions/MapEditorBackButton")
-@onready var tile_palette: Node = get_node_or_null("Ui/MapEditorPanel/MapEditorVBox/TilePalette")
+@onready var map_editor_save_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorSaveButton")
+@onready var map_editor_delete_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorDeleteButton")
+@onready var map_editor_back_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorBackButton")
+@onready var tile_palette: Node = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/TilePalette")
 @onready var object_editor_panel: Control = get_node_or_null("Ui/ObjectEditorPanel")
-@onready var object_editor_save_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions/ObjectEditorSaveButton")
-@onready var object_editor_delete_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions/ObjectEditorDeleteButton")
-@onready var object_editor_back_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions/ObjectEditorBackButton")
-@onready var object_palette: Node = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectPalette")
+@onready var object_editor_save_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions/ObjectEditorSaveButton")
+@onready var object_editor_delete_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions/ObjectEditorDeleteButton")
+@onready var object_editor_back_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions/ObjectEditorBackButton")
+@onready var object_palette: Node = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectPalette")
 @onready var resource_editor_panel: Control = get_node_or_null("Ui/ResourceEditorPanel")
-@onready var resource_editor_save_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions/ResourceEditorSaveButton")
-@onready var resource_editor_delete_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions/ResourceEditorDeleteButton")
-@onready var resource_editor_back_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions/ResourceEditorBackButton")
-@onready var resource_palette: Node = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorVBox/ResourcePalette")
+@onready var resource_editor_save_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourceEditorActions/ResourceEditorSaveButton")
+@onready var resource_editor_delete_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourceEditorActions/ResourceEditorDeleteButton")
+@onready var resource_editor_back_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourceEditorActions/ResourceEditorBackButton")
+@onready var resource_palette: Node = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourcePalette")
 @onready var world_map: Node = get_node_or_null("WorldMap")
 @onready var world_objects: Node = get_node_or_null("WorldObjects")
 @onready var world_resources: Node = get_node_or_null("WorldResources")
 @onready var world_blocking: Node = get_node_or_null("WorldBlocking")
 @onready var world_surface: Node = get_node_or_null("WorldSurface")
-@onready var unified_editor: Control = get_node_or_null("Ui/UnifiedMapEditor")
-@onready var admin_unified_editor_button: Button = get_node_or_null("Ui/AdminMenu/AdminMargin/AdminVBox/AdminUnifiedEditorButton")
 @onready var player: Node = get_node_or_null("Player")
 @onready var pause_overlay: Control = get_node_or_null("Ui/PauseOverlay")
 @onready var pause_resume_button: Button = get_node_or_null("Ui/PauseOverlay/PauseCenter/PausePanel/PauseMargin/PauseVBox/ResumeButton")
@@ -111,15 +109,6 @@ func _ready() -> void:
 		resource_editor_back_button.pressed.connect(_on_resource_editor_back_pressed)
 	if resource_palette != null and resource_palette.has_signal("resource_selected"):
 		resource_palette.connect("resource_selected", Callable(self, "_on_resource_selected"))
-	if unified_editor != null:
-		unified_editor.visible = false
-		unified_editor.set_world_nodes(world_map, world_objects, world_resources, world_blocking, world_surface)
-		if unified_editor.has_signal("editor_closed"):
-			unified_editor.connect("editor_closed", Callable(self, "_on_unified_editor_closed"))
-		if unified_editor.has_signal("editor_saved"):
-			unified_editor.connect("editor_saved", Callable(self, "_on_unified_editor_saved"))
-	if admin_unified_editor_button != null:
-		admin_unified_editor_button.pressed.connect(_on_admin_unified_editor_pressed)
 	if pause_overlay != null:
 		pause_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 		pause_overlay.visible = false
@@ -293,27 +282,6 @@ func _on_resource_editor_delete_pressed() -> void:
 func _on_resource_selected(type_id: String) -> void:
 	if world_resources != null and world_resources.has_method("set_selected_resource"):
 		world_resources.set_selected_resource(type_id)
-
-func _on_admin_unified_editor_pressed() -> void:
-	if admin_menu != null:
-		admin_menu.visible = false
-	if unified_editor != null:
-		unified_editor.visible = true
-	if map_editor_panel != null:
-		map_editor_panel.visible = false
-	if object_editor_panel != null:
-		object_editor_panel.visible = false
-	if resource_editor_panel != null:
-		resource_editor_panel.visible = false
-
-func _on_unified_editor_closed() -> void:
-	if unified_editor != null:
-		unified_editor.visible = false
-	if admin_menu != null:
-		admin_menu.visible = true
-
-func _on_unified_editor_saved() -> void:
-	pass
 
 func _on_pause_resume_pressed() -> void:
 	_set_pause_menu_visible(false)

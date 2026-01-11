@@ -1,7 +1,7 @@
 {
   "X": 1,
   "Y": 1,
-  "Version": 4,
+  "Version": 5,
   "Objects": [
     {
       "EntityId": "4e4b5572124c499ba5bd82eb697475dc",
@@ -42,6 +42,16 @@
       "IsBlocking": true,
       "CreatedUtc": "2026-01-10T07:01:30.8933497Z",
       "UpdatedUtc": "2026-01-10T07:01:30.8933498Z"
+    },
+    {
+      "EntityId": "648d6763fcd444bbb6d9fdac2e6ec3a8",
+      "TypeId": "wall_wood",
+      "X": 115,
+      "Y": 111,
+      "Rotation": 2,
+      "IsBlocking": true,
+      "CreatedUtc": "2026-01-11T18:25:32.2256444Z",
+      "UpdatedUtc": "2026-01-11T18:25:32.2256446Z"
     }
   ]
 }

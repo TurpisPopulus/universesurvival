@@ -106,13 +106,6 @@ theme_override_font_sizes/font_size = 22
 [node name="HSeparator1" type="HSeparator" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
 theme_override_constants/separation = 8
 
-[node name="AdminUnifiedEditorButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
-custom_minimum_size = Vector2(0, 45)
-text = "🗺 Унифицированный редактор"
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0.5, 1, 0.5, 1)
-theme_override_font_sizes/font_size = 16
-
 [node name="AdminMapEditorButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
 custom_minimum_size = Vector2(0, 40)
 text = "🌍 Редактор карты"
@@ -164,90 +157,162 @@ theme_override_font_sizes/font_size = 14
 
 [node name="MapEditorPanel" type="PanelContainer" parent="Ui"]
 visible = false
-offset_left = 260.0
+offset_left = 16.0
 offset_top = 16.0
-offset_right = 520.0
-offset_bottom = 160.0
+offset_right = 296.0
+offset_bottom = 480.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_AdminPanel")
 
-[node name="MapEditorVBox" type="VBoxContainer" parent="Ui/MapEditorPanel"]
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 244.0
-offset_bottom = 144.0
+[node name="MapEditorMargin" type="MarginContainer" parent="Ui/MapEditorPanel"]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="MapEditorVBox" type="VBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin"]
+theme_override_constants/separation = 12
+
+[node name="MapEditorTitle" type="Label" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
+text = "🌍 РЕДАКТОР КАРТЫ"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="HSeparator1" type="HSeparator" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
 theme_override_constants/separation = 8
 
-[node name="TilePalette" type="TextureRect" parent="Ui/MapEditorPanel/MapEditorVBox"]
+[node name="TilePalette" type="TextureRect" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
 script = ExtResource("4_tile_palette")
 
-[node name="MapEditorActions" type="HBoxContainer" parent="Ui/MapEditorPanel/MapEditorVBox"]
+[node name="HSeparator2" type="HSeparator" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
 theme_override_constants/separation = 8
 
-[node name="MapEditorSaveButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
-text = "Сохранить"
+[node name="MapEditorActions" type="VBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
+theme_override_constants/separation = 10
 
-[node name="MapEditorDeleteButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
-text = "Удалить"
+[node name="MapEditorSaveButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "💾 Сохранить"
+theme_override_colors/font_color = Color(0.5, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 14
 
-[node name="MapEditorBackButton" type="Button" parent="Ui/MapEditorPanel/MapEditorVBox/MapEditorActions"]
-text = "Назад"
+[node name="MapEditorDeleteButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "🗑 Удалить"
+theme_override_colors/font_color = Color(1, 0.7, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="MapEditorBackButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "❌ Назад"
+theme_override_colors/font_color = Color(1, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 14
 
 [node name="ObjectEditorPanel" type="PanelContainer" parent="Ui"]
 visible = false
-offset_left = 260.0
-offset_top = 176.0
-offset_right = 520.0
-offset_bottom = 320.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 296.0
+offset_bottom = 480.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_AdminPanel")
 
-[node name="ObjectEditorVBox" type="VBoxContainer" parent="Ui/ObjectEditorPanel"]
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 244.0
-offset_bottom = 136.0
+[node name="ObjectEditorMargin" type="MarginContainer" parent="Ui/ObjectEditorPanel"]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="ObjectEditorVBox" type="VBoxContainer" parent="Ui/ObjectEditorPanel/ObjectEditorMargin"]
+theme_override_constants/separation = 12
+
+[node name="ObjectEditorTitle" type="Label" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
+text = "📦 РАЗМЕЩЕНИЕ ОБЪЕКТОВ"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="HSeparator1" type="HSeparator" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
 theme_override_constants/separation = 8
 
-[node name="ObjectPalette" type="TextureRect" parent="Ui/ObjectEditorPanel/ObjectEditorVBox"]
+[node name="ObjectPalette" type="TextureRect" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
 script = ExtResource("6_object_palette")
 
-[node name="ObjectEditorActions" type="HBoxContainer" parent="Ui/ObjectEditorPanel/ObjectEditorVBox"]
+[node name="HSeparator2" type="HSeparator" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
 theme_override_constants/separation = 8
 
-[node name="ObjectEditorSaveButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
-text = "Сохранить"
+[node name="ObjectEditorActions" type="VBoxContainer" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
+theme_override_constants/separation = 10
 
-[node name="ObjectEditorDeleteButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
-text = "Удалить"
+[node name="ObjectEditorSaveButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "💾 Сохранить"
+theme_override_colors/font_color = Color(0.5, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 14
 
-[node name="ObjectEditorBackButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorVBox/ObjectEditorActions"]
-text = "Назад"
+[node name="ObjectEditorDeleteButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "🗑 Удалить"
+theme_override_colors/font_color = Color(1, 0.7, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="ObjectEditorBackButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "❌ Назад"
+theme_override_colors/font_color = Color(1, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 14
 
 [node name="ResourceEditorPanel" type="PanelContainer" parent="Ui"]
 visible = false
-offset_left = 260.0
-offset_top = 336.0
-offset_right = 520.0
-offset_bottom = 500.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 296.0
+offset_bottom = 480.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_AdminPanel")
 
-[node name="ResourceEditorVBox" type="VBoxContainer" parent="Ui/ResourceEditorPanel"]
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 244.0
-offset_bottom = 152.0
+[node name="ResourceEditorMargin" type="MarginContainer" parent="Ui/ResourceEditorPanel"]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="ResourceEditorVBox" type="VBoxContainer" parent="Ui/ResourceEditorPanel/ResourceEditorMargin"]
+theme_override_constants/separation = 12
+
+[node name="ResourceEditorTitle" type="Label" parent="Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox"]
+text = "🌲 РЕСУРСЫ"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="HSeparator1" type="HSeparator" parent="Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox"]
 theme_override_constants/separation = 8
 
-[node name="ResourcePalette" type="Control" parent="Ui/ResourceEditorPanel/ResourceEditorVBox"]
+[node name="ResourcePalette" type="Control" parent="Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox"]
 script = ExtResource("8_resource_palette")
 
-[node name="ResourceEditorActions" type="HBoxContainer" parent="Ui/ResourceEditorPanel/ResourceEditorVBox"]
+[node name="HSeparator2" type="HSeparator" parent="Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox"]
 theme_override_constants/separation = 8
 
-[node name="ResourceEditorSaveButton" type="Button" parent="Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions"]
-text = "Сохранить"
+[node name="ResourceEditorActions" type="VBoxContainer" parent="Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox"]
+theme_override_constants/separation = 10
 
-[node name="ResourceEditorDeleteButton" type="Button" parent="Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions"]
-text = "Удалить"
+[node name="ResourceEditorSaveButton" type="Button" parent="Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourceEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "💾 Сохранить"
+theme_override_colors/font_color = Color(0.5, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 14
 
-[node name="ResourceEditorBackButton" type="Button" parent="Ui/ResourceEditorPanel/ResourceEditorVBox/ResourceEditorActions"]
-text = "Назад"
+[node name="ResourceEditorDeleteButton" type="Button" parent="Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourceEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "🗑 Удалить"
+theme_override_colors/font_color = Color(1, 0.7, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="ResourceEditorBackButton" type="Button" parent="Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourceEditorActions"]
+custom_minimum_size = Vector2(0, 40)
+text = "❌ Назад"
+theme_override_colors/font_color = Color(1, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 14
 
 [node name="PauseOverlay" type="Control" parent="Ui"]
 anchor_right = 1.0
