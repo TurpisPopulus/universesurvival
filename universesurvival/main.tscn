@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://cgvngah40k2v1"]
+[gd_scene load_steps=14 format=3 uid="uid://cgvngah40k2v1"]
 
 [ext_resource type="PackedScene" uid="uid://dpx63pigio2ff" path="res://player.tscn" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://y07dgnjxwcqju" path="res://WorldMap.gd" id="2_qe77o"]
@@ -9,6 +9,24 @@
 [ext_resource type="Script" path="res://WorldResources.gd" id="7_world_resources"]
 [ext_resource type="Script" path="res://ResourcePalette.gd" id="8_resource_palette"]
 [ext_resource type="Texture2D" path="res://ui/loading_screen.png" id="9_loading_texture"]
+[ext_resource type="Script" path="res://WorldBlocking.gd" id="10_world_blocking"]
+[ext_resource type="Script" path="res://WorldSurface.gd" id="11_world_surface"]
+[ext_resource type="PackedScene" path="res://UnifiedMapEditor.tscn" id="12_unified_editor"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_AdminPanel"]
+bg_color = Color(0.1, 0.12, 0.18, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.4, 0.6, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 8
+shadow_offset = Vector2(2, 4)
 
 [node name="Main" type="Node2D"]
 position = Vector2(763, 421)
@@ -35,6 +53,16 @@ z_index = 0
 [node name="ResourcesTop" type="TileMap" parent="WorldResources"]
 z_index = 100
 
+[node name="WorldBlocking" type="Node2D" parent="."]
+z_index = 2
+script = ExtResource("10_world_blocking")
+player_path = NodePath("../Player")
+
+[node name="WorldSurface" type="Node2D" parent="."]
+z_index = -2
+script = ExtResource("11_world_surface")
+player_path = NodePath("../Player")
+
 [node name="Ui" type="CanvasLayer" parent="."]
 
 [node name="AdminButton" type="Button" parent="Ui"]
@@ -48,45 +76,91 @@ text = "Админка"
 visible = false
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 236.0
-offset_bottom = 380.0
+offset_right = 296.0
+offset_bottom = 480.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_AdminPanel")
 
-[node name="AdminVBox" type="VBoxContainer" parent="Ui/AdminMenu"]
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 212.0
-offset_bottom = 344.0
-theme_override_constants/separation = 6
+[node name="AdminMargin" type="MarginContainer" parent="Ui/AdminMenu"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 280.0
+offset_bottom = 464.0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
 
-[node name="AdminMapEditorButton" type="Button" parent="Ui/AdminMenu/AdminVBox"]
-text = "Редактор карты"
+[node name="AdminVBox" type="VBoxContainer" parent="Ui/AdminMenu/AdminMargin"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 260.0
+offset_bottom = 444.0
+theme_override_constants/separation = 12
 
-[node name="AdminObjectEditorButton" type="Button" parent="Ui/AdminMenu/AdminVBox"]
-text = "Размещение объектов"
+[node name="AdminTitle" type="Label" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+text = "⚙ АДМИН-ПАНЕЛЬ"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 22
 
-[node name="AdminResourceEditorButton" type="Button" parent="Ui/AdminMenu/AdminVBox"]
-text = "Ресурсы"
+[node name="HSeparator1" type="HSeparator" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+theme_override_constants/separation = 8
 
-[node name="AdminEmpty3" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+[node name="AdminUnifiedEditorButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+custom_minimum_size = Vector2(0, 45)
+text = "🗺 Унифицированный редактор"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(0.5, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="AdminMapEditorButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+custom_minimum_size = Vector2(0, 40)
+text = "🌍 Редактор карты"
+theme_override_font_sizes/font_size = 14
+
+[node name="AdminObjectEditorButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+custom_minimum_size = Vector2(0, 40)
+text = "📦 Размещение объектов"
+theme_override_font_sizes/font_size = 14
+
+[node name="AdminResourceEditorButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+custom_minimum_size = Vector2(0, 40)
+text = "🌲 Ресурсы"
+theme_override_font_sizes/font_size = 14
+
+[node name="HSeparator2" type="HSeparator" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+theme_override_constants/separation = 8
+
+[node name="AdminEmpty4" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+visible = false
+custom_minimum_size = Vector2(0, 35)
 text = "Пусто"
 
-[node name="AdminEmpty4" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+[node name="AdminEmpty5" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+visible = false
+custom_minimum_size = Vector2(0, 35)
 text = "Пусто"
 
-[node name="AdminEmpty5" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+[node name="AdminEmpty6" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+visible = false
+custom_minimum_size = Vector2(0, 35)
 text = "Пусто"
 
-[node name="AdminEmpty6" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+[node name="AdminEmpty7" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+visible = false
+custom_minimum_size = Vector2(0, 35)
 text = "Пусто"
 
-[node name="AdminEmpty7" type="Button" parent="Ui/AdminMenu/AdminVBox"]
+[node name="AdminEmpty8" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+visible = false
+custom_minimum_size = Vector2(0, 35)
 text = "Пусто"
 
-[node name="AdminEmpty8" type="Button" parent="Ui/AdminMenu/AdminVBox"]
-text = "Пусто"
-
-[node name="AdminBackButton" type="Button" parent="Ui/AdminMenu/AdminVBox"]
-text = "Назад"
+[node name="AdminBackButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
+custom_minimum_size = Vector2(0, 40)
+text = "❌ Закрыть"
+theme_override_colors/font_color = Color(1, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 14
 
 [node name="MapEditorPanel" type="PanelContainer" parent="Ui"]
 visible = false
@@ -316,6 +390,9 @@ theme_override_font_sizes/font_size = 18
 
 [node name="AuthorsText" type="Label" parent="Ui/PauseOverlay/SettingsCenter/SettingsPanel/SettingsMargin/SettingsVBox/SettingsBody/SettingsContent/ContentMargin/AuthorsPanel"]
 text = "Команда Universe Survival."
+
+[node name="UnifiedMapEditor" parent="Ui" instance=ExtResource("12_unified_editor")]
+visible = false
 
 [node name="LoadingOverlay" type="Control" parent="Ui"]
 anchor_right = 1.0
