@@ -7,15 +7,19 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Buffers.Binary;
+using static Helpers;
+using static BlockingAndSurfaceHelpers;
 
-var port = 7777;
+public class Program
+{
+    public static async Task Main(string[] args)
+    {
+        var port = 7777;
 if (args.Length > 0 && int.TryParse(args[0], out var parsedPort))
 {
     port = parsedPort;
 }
 
-const string SecurePrefix = "SEC1|";
-const string SharedKeyBase64 = "vux6wYEw7jG+5bcgE3Y75s1RnwNy0OQ//EAUp7XNk2M=";
 var sharedKey = LoadSharedKey();
 var encKey = DeriveKey(sharedKey, 0x01);
 var macKey = DeriveKey(sharedKey, 0x02);
@@ -28,13 +32,19 @@ var playersPath = Path.Combine(dataDir, "players.json");
 var accountsPath = Path.Combine(dataDir, "accounts.json");
 var objectTypesPath = Path.Combine(baseDir, "object_types.json");
 var resourceTypesPath = Path.Combine(baseDir, "resource_types.json");
+var blockingTypesPath = Path.Combine(baseDir, "blocking_types.json");
+var surfaceTypesPath = Path.Combine(baseDir, "surface_types.json");
 var players = LoadPlayers(playersPath);
 var accounts = LoadAccounts(accountsPath);
 var objectTypes = LoadObjectTypes(objectTypesPath);
 var resourceTypes = LoadResourceTypes(resourceTypesPath);
+var blockingTypes = LoadBlockingTypes(blockingTypesPath);
+var surfaceTypes = LoadSurfaceTypes(surfaceTypesPath);
 var world = LoadWorld(dataDir);
 var objectWorld = LoadObjectWorld(dataDir);
 var resourceWorld = LoadResourceWorld(dataDir);
+var blockingWorld = LoadBlockingWorld(dataDir);
+var surfaceWorld = LoadSurfaceWorld(dataDir);
 var endpoints = new Dictionary<string, IPEndPoint>(StringComparer.Ordinal);
 var activeWindow = TimeSpan.FromSeconds(10);
 var chunkSaveInterval = TimeSpan.FromSeconds(30);
@@ -76,6 +86,8 @@ void SaveAll()
     SaveDirtyChunks(dataDir, world, gate);
     SaveDirtyObjectChunks(dataDir, objectWorld, gate);
     SaveDirtyResourceChunks(dataDir, resourceWorld, gate);
+    SaveDirtyBlockingChunks(dataDir, blockingWorld, gate);
+    SaveDirtySurfaceChunks(dataDir, surfaceWorld, gate);
 }
 
 using var udp = new UdpClient(port);
@@ -84,6 +96,8 @@ Console.WriteLine("Payload format: SEC1|base64(version+nonce+ciphertext+mac)");
 Console.WriteLine($"World loaded: {world.Chunks.Count} chunks");
 Console.WriteLine($"Objects loaded: {objectWorld.Chunks.Count} chunks");
 Console.WriteLine($"Resources loaded: {resourceWorld.Chunks.Count} chunks");
+Console.WriteLine($"Blocking loaded: {blockingWorld.Chunks.Count} chunks");
+Console.WriteLine($"Surfaces loaded: {surfaceWorld.Chunks.Count} chunks");
 Console.WriteLine($"[DATA] baseDir   = {baseDir}");
 Console.WriteLine($"[DATA] dataDir   = {dataDir}");
 Console.WriteLine($"[DATA] playersPath = {playersPath}");
@@ -141,6 +155,8 @@ var chunkSaveTask = Task.Run(async () =>
             SaveDirtyChunks(dataDir, world, gate);
             SaveDirtyObjectChunks(dataDir, objectWorld, gate);
             SaveDirtyResourceChunks(dataDir, resourceWorld, gate);
+            SaveDirtyBlockingChunks(dataDir, blockingWorld, gate);
+            SaveDirtySurfaceChunks(dataDir, surfaceWorld, gate);
         }
     }
     catch (OperationCanceledException)
@@ -564,6 +580,108 @@ while (!cts.IsCancellationRequested)
         continue;
     }
 
+    if (TryParseBlockingRequest(message, out var blockingRequest, out var blockingError))
+    {
+        if (blockingError.Length != 0)
+        {
+            if (await SendToAsync(udp, "ERR|" + blockingError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
+            continue;
+        }
+
+        string? blockingResponse = null;
+        lock (gate)
+        {
+            var chunk = GetOrCreateBlockingChunk(blockingWorld, blockingRequest.Cx, blockingRequest.Cy);
+            if (blockingRequest.LastKnownVersion < 0 || chunk.Version > blockingRequest.LastKnownVersion)
+            {
+                blockingResponse = BuildBlockingResponse(chunk);
+            }
+        }
+        if (blockingResponse != null)
+        {
+            if (await SendToAsync(udp, blockingResponse, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
+        }
+        continue;
+    }
+
+    if (TryParseSurfaceRequest(message, out var surfaceRequest, out var surfaceError))
+    {
+        if (surfaceError.Length != 0)
+        {
+            if (await SendToAsync(udp, "ERR|" + surfaceError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
+            continue;
+        }
+
+        string? surfaceResponse = null;
+        lock (gate)
+        {
+            var chunk = GetOrCreateSurfaceChunk(surfaceWorld, surfaceRequest.Cx, surfaceRequest.Cy);
+            if (surfaceRequest.LastKnownVersion < 0 || chunk.Version > surfaceRequest.LastKnownVersion)
+            {
+                surfaceResponse = BuildSurfaceResponse(chunk);
+            }
+        }
+        if (surfaceResponse != null)
+        {
+            if (await SendToAsync(udp, surfaceResponse, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
+        }
+        continue;
+    }
+
+    if (TryParseBlockingEdit(message, out var blockingEditPayload, out var blockingEditError))
+    {
+        if (blockingEditError.Length != 0)
+        {
+            Console.WriteLine($"Blocking edit rejected from {result.RemoteEndPoint}: {blockingEditError}");
+            if (await SendToAsync(udp, "ERR|" + blockingEditError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
+            continue;
+        }
+
+        var appliedCount = 0;
+        lock (gate)
+        {
+            appliedCount = ApplyBlockingEdits(blockingWorld, blockingEditPayload, blockingTypes);
+        }
+        Console.WriteLine($"[BLOCKING_EDIT] applied changes={appliedCount} from {result.RemoteEndPoint}");
+        continue;
+    }
+
+    if (TryParseSurfaceEdit(message, out var surfaceEditPayload, out var surfaceEditError))
+    {
+        if (surfaceEditError.Length != 0)
+        {
+            Console.WriteLine($"Surface edit rejected from {result.RemoteEndPoint}: {surfaceEditError}");
+            if (await SendToAsync(udp, "ERR|" + surfaceEditError, result.RemoteEndPoint, encKey, macKey))
+            {
+                totalPacketsSent++;
+            }
+            continue;
+        }
+
+        var appliedCount = 0;
+        lock (gate)
+        {
+            appliedCount = ApplySurfaceEdits(surfaceWorld, surfaceEditPayload);
+        }
+        Console.WriteLine($"[SURFACE_EDIT] applied changes={appliedCount} from {result.RemoteEndPoint}");
+        continue;
+    }
+
     if (!TryParsePayload(message, out var payload, out var error))
     {
         Console.WriteLine($"Invalid payload from {result.RemoteEndPoint}: {error}");
@@ -645,14 +763,21 @@ while (!cts.IsCancellationRequested)
         );
     }
 
-    // Broadcasts are handled by the periodic timer to keep a steady tick.
+        // Broadcasts are handled by the periodic timer to keep a steady tick.
+    }
+
+        SaveAll();
+        await saveTask;
+        await chunkSaveTask;
+    }
 }
 
-SaveAll();
-await saveTask;
-await chunkSaveTask;
+public static class Helpers
+{
+    public const string SecurePrefix = "SEC1|";
+    public const string SharedKeyBase64 = "vux6wYEw7jG+5bcgE3Y75s1RnwNy0OQ//EAUp7XNk2M=";
 
-static bool TryParseRegister(string payload, out string name, out string password, out string appearance, out string error)
+    public static bool TryParseRegister(string payload, out string name, out string password, out string appearance, out string error)
 {
     name = string.Empty;
     password = string.Empty;
@@ -690,7 +815,7 @@ static bool TryParseRegister(string payload, out string name, out string passwor
     return true;
 }
 
-static bool TryParseLogin(string payload, out string name, out string password, out string error)
+public static bool TryParseLogin(string payload, out string name, out string password, out string error)
 {
     name = string.Empty;
     password = string.Empty;
@@ -718,7 +843,7 @@ static bool TryParseLogin(string payload, out string name, out string password, 
     return true;
 }
 
-static bool TryParsePayload(string payload, out PlayerPacket packet, out string error)
+public static bool TryParsePayload(string payload, out PlayerPacket packet, out string error)
 {
     packet = default;
     error = string.Empty;
@@ -750,7 +875,7 @@ static bool TryParsePayload(string payload, out PlayerPacket packet, out string 
     return true;
 }
 
-static bool TryParseChunkRequest(string payload, out ChunkRequest request, out string error)
+public static bool TryParseChunkRequest(string payload, out ChunkRequest request, out string error)
 {
     request = default;
     error = string.Empty;
@@ -779,7 +904,7 @@ static bool TryParseChunkRequest(string payload, out ChunkRequest request, out s
     return true;
 }
 
-static bool TryParseObjectsRequest(string payload, out ObjectsRequest request, out string error)
+public static bool TryParseObjectsRequest(string payload, out ObjectsRequest request, out string error)
 {
     request = default;
     error = string.Empty;
@@ -808,7 +933,7 @@ static bool TryParseObjectsRequest(string payload, out ObjectsRequest request, o
     return true;
 }
 
-static bool TryParseResourcesRequest(string payload, out ResourcesRequest request, out string error)
+public static bool TryParseResourcesRequest(string payload, out ResourcesRequest request, out string error)
 {
     request = default;
     error = string.Empty;
@@ -837,7 +962,7 @@ static bool TryParseResourcesRequest(string payload, out ResourcesRequest reques
     return true;
 }
 
-static bool TryParseEdit(string payload, out EditPayload update, out string error)
+public static bool TryParseEdit(string payload, out EditPayload update, out string error)
 {
     update = new EditPayload();
     error = string.Empty;
@@ -875,7 +1000,7 @@ static bool TryParseEdit(string payload, out EditPayload update, out string erro
     return true;
 }
 
-static bool TryParseObjectEdit(string payload, out ObjectEditPayload update, out string error)
+public static bool TryParseObjectEdit(string payload, out ObjectEditPayload update, out string error)
 {
     update = new ObjectEditPayload();
     error = string.Empty;
@@ -913,7 +1038,7 @@ static bool TryParseObjectEdit(string payload, out ObjectEditPayload update, out
     return true;
 }
 
-static bool TryParseResourceEdit(string payload, out ResourceEditPayload update, out string error)
+public static bool TryParseResourceEdit(string payload, out ResourceEditPayload update, out string error)
 {
     update = new ResourceEditPayload();
     error = string.Empty;
@@ -951,7 +1076,7 @@ static bool TryParseResourceEdit(string payload, out ResourceEditPayload update,
     return true;
 }
 
-static int ApplyEdits(World world, EditPayload update)
+public static int ApplyEdits(World world, EditPayload update)
 {
     if (update.Changes == null || update.Changes.Length == 0)
     {
@@ -980,7 +1105,7 @@ static int ApplyEdits(World world, EditPayload update)
     return applied;
 }
 
-static int ApplyObjectEdits(ObjectWorld world, ObjectEditPayload update, Dictionary<string, ObjectType> objectTypes)
+public static int ApplyObjectEdits(ObjectWorld world, ObjectEditPayload update, Dictionary<string, ObjectType> objectTypes)
 {
     if (update.Changes == null || update.Changes.Length == 0)
     {
@@ -1051,7 +1176,7 @@ static int ApplyObjectEdits(ObjectWorld world, ObjectEditPayload update, Diction
     return applied;
 }
 
-static int ApplyResourceEdits(ResourceWorld world, ResourceEditPayload update, Dictionary<string, ResourceType> resourceTypes)
+public static int ApplyResourceEdits(ResourceWorld world, ResourceEditPayload update, Dictionary<string, ResourceType> resourceTypes)
 {
     if (update.Changes == null || update.Changes.Length == 0)
     {
@@ -1118,7 +1243,7 @@ static int ApplyResourceEdits(ResourceWorld world, ResourceEditPayload update, D
     return applied;
 }
 
-static bool IsNameTaken(
+public static bool IsNameTaken(
     string name,
     IPEndPoint source,
     Dictionary<string, PlayerState> players,
@@ -1148,7 +1273,7 @@ static bool IsNameTaken(
     }
 }
 
-static bool TryValidateLogin(
+public static bool TryValidateLogin(
     string name,
     string password,
     Dictionary<string, Account> accounts,
@@ -1195,7 +1320,7 @@ static bool TryValidateLogin(
     return true;
 }
 
-static string BuildBroadcast(IEnumerable<PlayerState> players)
+public static string BuildBroadcast(IEnumerable<PlayerState> players)
 {
     var lines = players.Select(player =>
         $"{player.Id}|{player.Name}|{player.X.ToString("0.###", CultureInfo.InvariantCulture)}|{player.Y.ToString("0.###", CultureInfo.InvariantCulture)}|{player.Appearance}"
@@ -1203,7 +1328,7 @@ static string BuildBroadcast(IEnumerable<PlayerState> players)
     return string.Join('\n', lines);
 }
 
-static string BuildChunkResponse(Chunk chunk)
+public static string BuildChunkResponse(Chunk chunk)
 {
     var payload = new ChunkPayload
     {
@@ -1220,7 +1345,7 @@ static string BuildChunkResponse(Chunk chunk)
     });
 }
 
-static string BuildObjectsResponse(ObjectChunk chunk)
+public static string BuildObjectsResponse(ObjectChunk chunk)
 {
     var payload = new ObjectChunkPayload
     {
@@ -1236,7 +1361,7 @@ static string BuildObjectsResponse(ObjectChunk chunk)
     });
 }
 
-static string BuildResourcesResponse(ResourceChunk chunk)
+public static string BuildResourcesResponse(ResourceChunk chunk)
 {
     var payload = new ResourceChunkPayload
     {
@@ -1252,7 +1377,7 @@ static string BuildResourcesResponse(ResourceChunk chunk)
     });
 }
 
-static Dictionary<string, PlayerState> LoadPlayers(string path)
+public static Dictionary<string, PlayerState> LoadPlayers(string path)
 {
     try
     {
@@ -1274,7 +1399,7 @@ static Dictionary<string, PlayerState> LoadPlayers(string path)
     }
 }
 
-static Dictionary<string, Account> LoadAccounts(string path)
+public static Dictionary<string, Account> LoadAccounts(string path)
 {
     try
     {
@@ -1296,7 +1421,7 @@ static Dictionary<string, Account> LoadAccounts(string path)
     }
 }
 
-static World LoadWorld(string dataDir)
+public static World LoadWorld(string dataDir)
 {
     var chunks = new Dictionary<ChunkId, Chunk>();
     try
@@ -1321,7 +1446,7 @@ static World LoadWorld(string dataDir)
     return new World(chunks);
 }
 
-static Dictionary<string, ObjectType> LoadObjectTypes(string path)
+public static Dictionary<string, ObjectType> LoadObjectTypes(string path)
 {
     try
     {
@@ -1374,7 +1499,7 @@ static Dictionary<string, ObjectType> LoadObjectTypes(string path)
     }
 }
 
-static Dictionary<string, ResourceType> LoadResourceTypes(string path)
+public static Dictionary<string, ResourceType> LoadResourceTypes(string path)
 {
     try
     {
@@ -1438,7 +1563,7 @@ static Dictionary<string, ResourceType> LoadResourceTypes(string path)
     }
 }
 
-static ObjectWorld LoadObjectWorld(string dataDir)
+public static ObjectWorld LoadObjectWorld(string dataDir)
 {
     var chunks = new Dictionary<ChunkId, ObjectChunk>();
     try
@@ -1463,7 +1588,7 @@ static ObjectWorld LoadObjectWorld(string dataDir)
     return new ObjectWorld(chunks);
 }
 
-static ResourceWorld LoadResourceWorld(string dataDir)
+public static ResourceWorld LoadResourceWorld(string dataDir)
 {
     var chunks = new Dictionary<ChunkId, ResourceChunk>();
     try
@@ -1488,7 +1613,7 @@ static ResourceWorld LoadResourceWorld(string dataDir)
     return new ResourceWorld(chunks);
 }
 
-static Chunk? LoadChunk(string path)
+public static Chunk? LoadChunk(string path)
 {
     try
     {
@@ -1522,7 +1647,7 @@ static Chunk? LoadChunk(string path)
     }
 }
 
-static ObjectChunk? LoadObjectChunk(string path)
+public static ObjectChunk? LoadObjectChunk(string path)
 {
     try
     {
@@ -1547,7 +1672,7 @@ static ObjectChunk? LoadObjectChunk(string path)
     }
 }
 
-static ResourceChunk? LoadResourceChunk(string path)
+public static ResourceChunk? LoadResourceChunk(string path)
 {
     try
     {
@@ -1572,7 +1697,7 @@ static ResourceChunk? LoadResourceChunk(string path)
     }
 }
 
-static void SaveDirtyChunks(string dataDir, World world, object gate)
+public static void SaveDirtyChunks(string dataDir, World world, object gate)
 {
     List<(Chunk chunk, int version)> dirty;
     lock (gate)
@@ -1608,7 +1733,7 @@ static void SaveDirtyChunks(string dataDir, World world, object gate)
     }
 }
 
-static void SaveDirtyObjectChunks(string dataDir, ObjectWorld world, object gate)
+public static void SaveDirtyObjectChunks(string dataDir, ObjectWorld world, object gate)
 {
     List<(ObjectChunk chunk, int version)> dirty;
     lock (gate)
@@ -1644,7 +1769,7 @@ static void SaveDirtyObjectChunks(string dataDir, ObjectWorld world, object gate
     }
 }
 
-static void SaveDirtyResourceChunks(string dataDir, ResourceWorld world, object gate)
+public static void SaveDirtyResourceChunks(string dataDir, ResourceWorld world, object gate)
 {
     List<(ResourceChunk chunk, int version)> dirty;
     lock (gate)
@@ -1680,7 +1805,7 @@ static void SaveDirtyResourceChunks(string dataDir, ResourceWorld world, object 
     }
 }
 
-static void SavePlayers(string path, Dictionary<string, PlayerState> players, object gate)
+public static void SavePlayers(string path, Dictionary<string, PlayerState> players, object gate)
 {
     try
     {
@@ -1702,7 +1827,7 @@ static void SavePlayers(string path, Dictionary<string, PlayerState> players, ob
     }
 }
 
-static void SaveAccounts(string path, Dictionary<string, Account> accounts, object gate)
+public static void SaveAccounts(string path, Dictionary<string, Account> accounts, object gate)
 {
     try
     {
@@ -1724,7 +1849,7 @@ static void SaveAccounts(string path, Dictionary<string, Account> accounts, obje
     }
 }
 
-static void WriteAllTextAtomic(string path, string content)
+public static void WriteAllTextAtomic(string path, string content)
 {
     var dir = Path.GetDirectoryName(path);
     if (!string.IsNullOrEmpty(dir))
@@ -1744,7 +1869,7 @@ static void WriteAllTextAtomic(string path, string content)
     }
 }
 
-static Account CreateAccount(string name, string password, string appearance)
+public static Account CreateAccount(string name, string password, string appearance)
 {
     var salt = RandomNumberGenerator.GetBytes(16);
     var hash = HashPassword(password, salt);
@@ -1759,7 +1884,7 @@ static Account CreateAccount(string name, string password, string appearance)
     };
 }
 
-static void UpgradeAccountPassword(Account account, string password)
+public static void UpgradeAccountPassword(Account account, string password)
 {
     var salt = RandomNumberGenerator.GetBytes(16);
     var hash = HashPassword(password, salt);
@@ -1768,7 +1893,7 @@ static void UpgradeAccountPassword(Account account, string password)
     account.Password = string.Empty;
 }
 
-static byte[] HashPassword(string password, byte[] salt)
+public static byte[] HashPassword(string password, byte[] salt)
 {
     return Rfc2898DeriveBytes.Pbkdf2(
         password,
@@ -1778,7 +1903,7 @@ static byte[] HashPassword(string password, byte[] salt)
         32);
 }
 
-static bool VerifyPassword(string password, string saltBase64, string hashBase64)
+public static bool VerifyPassword(string password, string saltBase64, string hashBase64)
 {
     try
     {
@@ -1793,7 +1918,7 @@ static bool VerifyPassword(string password, string saltBase64, string hashBase64
     }
 }
 
-static async Task<bool> SendToAsync(UdpClient udp, string message, IPEndPoint endpoint, byte[] encKey, byte[] macKey)
+public static async Task<bool> SendToAsync(UdpClient udp, string message, IPEndPoint endpoint, byte[] encKey, byte[] macKey)
 {
     var secured = EncryptMessage(message, encKey, macKey);
     var bytes = Encoding.UTF8.GetBytes(secured);
@@ -1809,7 +1934,7 @@ static async Task<bool> SendToAsync(UdpClient udp, string message, IPEndPoint en
     }
 }
 
-static double GetEnvDouble(string name, double fallback)
+public static double GetEnvDouble(string name, double fallback)
 {
     var raw = Environment.GetEnvironmentVariable(name);
     if (string.IsNullOrWhiteSpace(raw))
@@ -1825,7 +1950,7 @@ static double GetEnvDouble(string name, double fallback)
     return fallback;
 }
 
-static bool GetEnvBool(string name, bool fallback)
+public static bool GetEnvBool(string name, bool fallback)
 {
     var raw = Environment.GetEnvironmentVariable(name);
     if (string.IsNullOrWhiteSpace(raw))
@@ -1851,7 +1976,7 @@ static bool GetEnvBool(string name, bool fallback)
     return fallback;
 }
 
-static bool TryConsumeRateLimit(
+public static bool TryConsumeRateLimit(
     Dictionary<string, RateLimitState> limiter,
     IPEndPoint endpoint,
     DateTime nowUtc,
@@ -1901,7 +2026,7 @@ static bool TryConsumeRateLimit(
     return false;
 }
 
-static void CleanupRateLimits(Dictionary<string, RateLimitState> limiter, DateTime nowUtc, TimeSpan idleWindow)
+public static void CleanupRateLimits(Dictionary<string, RateLimitState> limiter, DateTime nowUtc, TimeSpan idleWindow)
 {
     if (limiter.Count == 0)
     {
@@ -1919,7 +2044,7 @@ static void CleanupRateLimits(Dictionary<string, RateLimitState> limiter, DateTi
     }
 }
 
-static byte[] LoadSharedKey()
+public static byte[] LoadSharedKey()
 {
     var keyBase64 = Environment.GetEnvironmentVariable("UNIVERSE_NET_KEY");
     if (string.IsNullOrWhiteSpace(keyBase64))
@@ -1942,7 +2067,7 @@ static byte[] LoadSharedKey()
     }
 }
 
-static byte[] DeriveKey(byte[] masterKey, byte tag)
+public static byte[] DeriveKey(byte[] masterKey, byte tag)
 {
     var tagged = new byte[1 + masterKey.Length];
     tagged[0] = tag;
@@ -1950,7 +2075,7 @@ static byte[] DeriveKey(byte[] masterKey, byte tag)
     return SHA256.HashData(tagged);
 }
 
-static bool TryDecryptSecureMessage(string payload, byte[] encKey, byte[] macKey, out string message, out string error)
+public static bool TryDecryptSecureMessage(string payload, byte[] encKey, byte[] macKey, out string message, out string error)
 {
     message = string.Empty;
     error = string.Empty;
@@ -2009,7 +2134,7 @@ static bool TryDecryptSecureMessage(string payload, byte[] encKey, byte[] macKey
     return true;
 }
 
-static string EncryptMessage(string message, byte[] encKey, byte[] macKey)
+public static string EncryptMessage(string message, byte[] encKey, byte[] macKey)
 {
     var nonce = RandomNumberGenerator.GetBytes(16);
     var plain = Encoding.UTF8.GetBytes(message);
@@ -2026,7 +2151,7 @@ static string EncryptMessage(string message, byte[] encKey, byte[] macKey)
     return SecurePrefix + Convert.ToBase64String(payload);
 }
 
-static byte[] AesCtrTransform(byte[] key, byte[] nonce, byte[] input)
+public static byte[] AesCtrTransform(byte[] key, byte[] nonce, byte[] input)
 {
     var output = new byte[input.Length];
     ulong counter = 0;
@@ -2045,7 +2170,7 @@ static byte[] AesCtrTransform(byte[] key, byte[] nonce, byte[] input)
     return output;
 }
 
-static byte[] BuildKeystreamBlock(byte[] key, byte[] nonce, ulong counter)
+public static byte[] BuildKeystreamBlock(byte[] key, byte[] nonce, ulong counter)
 {
     var counterBytes = new byte[8];
     BinaryPrimitives.WriteUInt64BigEndian(counterBytes, counter);
@@ -2056,7 +2181,7 @@ static byte[] BuildKeystreamBlock(byte[] key, byte[] nonce, ulong counter)
     return hmac.ComputeHash(data);
 }
 
-static int GetAccessLevel(string name, Dictionary<string, Account> accounts, object gate)
+public static int GetAccessLevel(string name, Dictionary<string, Account> accounts, object gate)
 {
     lock (gate)
     {
@@ -2069,7 +2194,7 @@ static int GetAccessLevel(string name, Dictionary<string, Account> accounts, obj
     return 5;
 }
 
-static bool NormalizeAccounts(Dictionary<string, Account> accounts)
+public static bool NormalizeAccounts(Dictionary<string, Account> accounts)
 {
     var changed = false;
     foreach (var (name, account) in accounts)
@@ -2085,7 +2210,7 @@ static bool NormalizeAccounts(Dictionary<string, Account> accounts)
     return changed;
 }
 
-static int NormalizeAccessLevel(string name, int level)
+public static int NormalizeAccessLevel(string name, int level)
 {
     if (string.Equals(name, "admin", StringComparison.OrdinalIgnoreCase))
     {
@@ -2100,7 +2225,7 @@ static int NormalizeAccessLevel(string name, int level)
     return 5;
 }
 
-static Chunk GetOrCreateChunk(World world, int cx, int cy)
+public static Chunk GetOrCreateChunk(World world, int cx, int cy)
 {
     var id = new ChunkId(cx, cy);
     if (world.Chunks.TryGetValue(id, out var chunk))
@@ -2117,7 +2242,7 @@ static Chunk GetOrCreateChunk(World world, int cx, int cy)
     return chunk;
 }
 
-static ObjectChunk GetOrCreateObjectChunk(ObjectWorld world, int cx, int cy)
+public static ObjectChunk GetOrCreateObjectChunk(ObjectWorld world, int cx, int cy)
 {
     var id = new ChunkId(cx, cy);
     if (world.Chunks.TryGetValue(id, out var chunk))
@@ -2134,7 +2259,7 @@ static ObjectChunk GetOrCreateObjectChunk(ObjectWorld world, int cx, int cy)
     return chunk;
 }
 
-static ResourceChunk GetOrCreateResourceChunk(ResourceWorld world, int cx, int cy)
+public static ResourceChunk GetOrCreateResourceChunk(ResourceWorld world, int cx, int cy)
 {
     var id = new ChunkId(cx, cy);
     if (world.Chunks.TryGetValue(id, out var chunk))
@@ -2151,7 +2276,7 @@ static ResourceChunk GetOrCreateResourceChunk(ResourceWorld world, int cx, int c
     return chunk;
 }
 
-static int FloorDiv(int value, int size)
+public static int FloorDiv(int value, int size)
 {
     if (size <= 0)
     {
@@ -2166,7 +2291,7 @@ static int FloorDiv(int value, int size)
     return -(((-value - 1) / size) + 1);
 }
 
-static string GetAppearance(string name, Dictionary<string, Account> accounts, object gate)
+public static string GetAppearance(string name, Dictionary<string, Account> accounts, object gate)
 {
     lock (gate)
     {
@@ -2179,7 +2304,7 @@ static string GetAppearance(string name, Dictionary<string, Account> accounts, o
     return string.Empty;
 }
 
-static string BuildLoginReply(float x, float y, int accessLevel, string appearance)
+public static string BuildLoginReply(float x, float y, int accessLevel, string appearance)
 {
     var reply = $"OK|{x.ToString("0.###", CultureInfo.InvariantCulture)}|{y.ToString("0.###", CultureInfo.InvariantCulture)}|{accessLevel}";
     if (!string.IsNullOrWhiteSpace(appearance))
@@ -2190,7 +2315,7 @@ static string BuildLoginReply(float x, float y, int accessLevel, string appearan
     return reply;
 }
 
-static void LogPerformanceStats(
+public static void LogPerformanceStats(
     System.Diagnostics.Process process,
     long totalReceived,
     long totalSent,
@@ -2247,7 +2372,7 @@ static void LogPerformanceStats(
     }
 }
 
-static string FormatTimeSpan(TimeSpan ts)
+public static string FormatTimeSpan(TimeSpan ts)
 {
     if (ts.TotalDays >= 1)
     {
@@ -2262,17 +2387,18 @@ static string FormatTimeSpan(TimeSpan ts)
         return $"{(int)ts.TotalMinutes}m {ts.Seconds}s";
     }
     return $"{ts.Seconds}s";
+    }
 }
 
-readonly record struct PlayerPacket(string Id, string Name, float X, float Y, string Appearance);
-readonly record struct ChunkRequest(int Cx, int Cy, int LastKnownVersion);
-readonly record struct ObjectsRequest(int Cx, int Cy, int LastKnownVersion);
-readonly record struct ResourcesRequest(int Cx, int Cy, int LastKnownVersion);
-readonly record struct ChunkId(int X, int Y);
+public readonly record struct PlayerPacket(string Id, string Name, float X, float Y, string Appearance);
+public readonly record struct ChunkRequest(int Cx, int Cy, int LastKnownVersion);
+public readonly record struct ObjectsRequest(int Cx, int Cy, int LastKnownVersion);
+public readonly record struct ResourcesRequest(int Cx, int Cy, int LastKnownVersion);
+public readonly record struct ChunkId(int X, int Y);
 
-sealed record PlayerState(string Id, string Name, float X, float Y, DateTime LastSeenUtc, string Appearance = "");
+public sealed record PlayerState(string Id, string Name, float X, float Y, DateTime LastSeenUtc, string Appearance = "");
 
-sealed class ChunkPayload
+public sealed class ChunkPayload
 {
     public int X { get; set; }
     public int Y { get; set; }
@@ -2281,29 +2407,29 @@ sealed class ChunkPayload
     public int[] Tiles { get; set; } = Array.Empty<int>();
 }
 
-sealed class EditPayload
+public sealed class EditPayload
 {
     public TileChange[] Changes { get; set; } = Array.Empty<TileChange>();
 }
 
-sealed class ObjectEditPayload
+public sealed class ObjectEditPayload
 {
     public ObjectChange[] Changes { get; set; } = Array.Empty<ObjectChange>();
 }
 
-sealed class ResourceEditPayload
+public sealed class ResourceEditPayload
 {
     public ResourceChange[] Changes { get; set; } = Array.Empty<ResourceChange>();
 }
 
-sealed class TileChange
+public sealed class TileChange
 {
     public int X { get; set; }
     public int Y { get; set; }
     public int Tile { get; set; }
 }
 
-sealed class ObjectChange
+public sealed class ObjectChange
 {
     public int X { get; set; }
     public int Y { get; set; }
@@ -2311,14 +2437,14 @@ sealed class ObjectChange
     public int Rotation { get; set; }
 }
 
-sealed class ResourceChange
+public sealed class ResourceChange
 {
     public int X { get; set; }
     public int Y { get; set; }
     public string TypeId { get; set; } = string.Empty;
 }
 
-sealed class World
+public sealed class World
 {
     public Dictionary<ChunkId, Chunk> Chunks { get; }
 
@@ -2328,7 +2454,7 @@ sealed class World
     }
 }
 
-sealed class ObjectWorld
+public sealed class ObjectWorld
 {
     public Dictionary<ChunkId, ObjectChunk> Chunks { get; }
 
@@ -2338,7 +2464,7 @@ sealed class ObjectWorld
     }
 }
 
-sealed class ResourceWorld
+public sealed class ResourceWorld
 {
     public Dictionary<ChunkId, ResourceChunk> Chunks { get; }
 
@@ -2348,7 +2474,7 @@ sealed class ResourceWorld
     }
 }
 
-sealed class Chunk
+public sealed class Chunk
 {
     public const int ChunkSize = 100;
     public const int TileCount = ChunkSize * ChunkSize;
@@ -2394,7 +2520,7 @@ sealed class Chunk
     }
 }
 
-sealed class ObjectChunkPayload
+public sealed class ObjectChunkPayload
 {
     public int X { get; set; }
     public int Y { get; set; }
@@ -2402,7 +2528,7 @@ sealed class ObjectChunkPayload
     public List<ObjectEntry> Objects { get; set; } = new();
 }
 
-sealed class ResourceChunkPayload
+public sealed class ResourceChunkPayload
 {
     public int X { get; set; }
     public int Y { get; set; }
@@ -2410,7 +2536,7 @@ sealed class ResourceChunkPayload
     public List<ResourceEntry> Resources { get; set; } = new();
 }
 
-sealed class ObjectChunk
+public sealed class ObjectChunk
 {
     public int X { get; set; }
     public int Y { get; set; }
@@ -2421,7 +2547,7 @@ sealed class ObjectChunk
     public bool IsDirty { get; set; }
 }
 
-sealed class ResourceChunk
+public sealed class ResourceChunk
 {
     public int X { get; set; }
     public int Y { get; set; }
@@ -2432,7 +2558,7 @@ sealed class ResourceChunk
     public bool IsDirty { get; set; }
 }
 
-sealed class ObjectEntry
+public sealed class ObjectEntry
 {
     public string EntityId { get; set; } = string.Empty;
     public string TypeId { get; set; } = string.Empty;
@@ -2444,7 +2570,7 @@ sealed class ObjectEntry
     public DateTime UpdatedUtc { get; set; }
 }
 
-sealed class ResourceEntry
+public sealed class ResourceEntry
 {
     public string EntityId { get; set; } = string.Empty;
     public string TypeId { get; set; } = string.Empty;
@@ -2455,19 +2581,19 @@ sealed class ResourceEntry
     public DateTime UpdatedUtc { get; set; }
 }
 
-sealed class ObjectType
+public sealed class ObjectType
 {
     public string TypeId { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public bool IsBlocking { get; init; }
 }
 
-sealed class ObjectTypeCatalog
+public sealed class ObjectTypeCatalog
 {
     public List<ObjectType> Types { get; set; } = new();
 }
 
-sealed class ResourceType
+public sealed class ResourceType
 {
     public string TypeId { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
@@ -2476,19 +2602,19 @@ sealed class ResourceType
     public List<ResourceDrop> Drops { get; init; } = new();
 }
 
-sealed class ResourceDrop
+public sealed class ResourceDrop
 {
     public string ItemId { get; init; } = string.Empty;
     public int Min { get; init; }
     public int Max { get; init; }
 }
 
-sealed class ResourceTypeCatalog
+public sealed class ResourceTypeCatalog
 {
     public List<ResourceType> Types { get; set; } = new();
 }
 
-sealed class Account
+public sealed class Account
 {
     public string Name { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
@@ -2498,10 +2624,712 @@ sealed class Account
     public string Appearance { get; set; } = string.Empty;
 }
 
-sealed class RateLimitState
+public sealed class RateLimitState
 {
     public double Tokens { get; set; }
     public DateTime LastRefillUtc { get; set; }
     public DateTime LastSeenUtc { get; set; }
     public DateTime LastLogUtc { get; set; }
+}
+
+// ========== BLOCKING WORLD ==========
+
+public readonly record struct BlockingRequest(int Cx, int Cy, int LastKnownVersion);
+
+public sealed class BlockingWorld
+{
+    public Dictionary<ChunkId, BlockingChunk> Chunks { get; }
+
+    public BlockingWorld(Dictionary<ChunkId, BlockingChunk> chunks)
+    {
+        Chunks = chunks;
+    }
+}
+
+public sealed class BlockingChunk
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Version { get; set; }
+    public List<BlockingEntry> Blocks { get; set; } = new();
+
+    [JsonIgnore]
+    public bool IsDirty { get; set; }
+}
+
+public sealed class BlockingEntry
+{
+    public string EntityId { get; set; } = string.Empty;
+    public string TypeId { get; set; } = string.Empty;
+    public int X { get; set; }
+    public int Y { get; set; }
+    public DateTime CreatedUtc { get; set; }
+    public DateTime UpdatedUtc { get; set; }
+}
+
+public sealed class BlockingChunkPayload
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Version { get; set; }
+    public List<BlockingEntry> Blocks { get; set; } = new();
+}
+
+public sealed class BlockingEditPayload
+{
+    public BlockingChange[] Changes { get; set; } = Array.Empty<BlockingChange>();
+}
+
+public sealed class BlockingChange
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public string TypeId { get; set; } = string.Empty;
+}
+
+public sealed class BlockingType
+{
+    public string TypeId { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public int[] Size { get; init; } = new[] { 1, 1 };
+}
+
+public sealed class BlockingTypeCatalog
+{
+    public List<BlockingType> Types { get; set; } = new();
+}
+
+public static class BlockingAndSurfaceHelpers
+{
+    public static bool TryParseBlockingRequest(string payload, out BlockingRequest request, out string error)
+    {
+    request = default;
+    error = string.Empty;
+
+    if (!payload.StartsWith("BLOCKING|", StringComparison.Ordinal))
+    {
+        return false;
+    }
+
+    var parts = payload.Split('|');
+    if (parts.Length < 4)
+    {
+        error = "bad_blocking";
+        return true;
+    }
+
+    if (!int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cx) ||
+        !int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cy) ||
+        !int.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var lastKnownVersion))
+    {
+        error = "bad_blocking";
+        return true;
+    }
+
+    request = new BlockingRequest(cx, cy, lastKnownVersion);
+    return true;
+}
+
+public static bool TryParseBlockingEdit(string payload, out BlockingEditPayload update, out string error)
+{
+    update = new BlockingEditPayload();
+    error = string.Empty;
+
+    if (!payload.StartsWith("BLOCKING_EDIT|", StringComparison.Ordinal))
+    {
+        return false;
+    }
+
+    var json = payload.Substring("BLOCKING_EDIT|".Length);
+    if (string.IsNullOrWhiteSpace(json))
+    {
+        error = "bad_blocking_edit";
+        return true;
+    }
+
+    try
+    {
+        update = JsonSerializer.Deserialize<BlockingEditPayload>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? new BlockingEditPayload();
+    }
+    catch (Exception)
+    {
+        error = "bad_blocking_edit";
+        return true;
+    }
+
+    if (update.Changes == null || update.Changes.Length == 0)
+    {
+        error = "bad_blocking_edit";
+    }
+
+    return true;
+}
+
+public static BlockingWorld LoadBlockingWorld(string dataDir)
+{
+    var chunks = new Dictionary<ChunkId, BlockingChunk>();
+    try
+    {
+        foreach (var path in Directory.EnumerateFiles(dataDir, "blocking_*.json"))
+        {
+            var chunk = LoadBlockingChunk(path);
+            if (chunk == null)
+            {
+                continue;
+            }
+
+            var id = new ChunkId(chunk.X, chunk.Y);
+            chunks[id] = chunk;
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Blocking world load error: {ex.Message}");
+    }
+
+    return new BlockingWorld(chunks);
+}
+
+public static BlockingChunk? LoadBlockingChunk(string path)
+{
+    try
+    {
+        var json = File.ReadAllText(path, Encoding.UTF8);
+        var chunk = JsonSerializer.Deserialize<BlockingChunk>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        if (chunk == null)
+        {
+            return null;
+        }
+
+        chunk.Blocks ??= new List<BlockingEntry>();
+        chunk.IsDirty = false;
+        return chunk;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Blocking chunk load error ({Path.GetFileName(path)}): {ex.Message}");
+        return null;
+    }
+}
+
+public static Dictionary<string, BlockingType> LoadBlockingTypes(string path)
+{
+    try
+    {
+        if (!File.Exists(path))
+        {
+            var defaults = new BlockingTypeCatalog
+            {
+                Types = new List<BlockingType>
+                {
+                    new() { TypeId = "block_1x1", DisplayName = "Block 1x1", Size = new[] { 1, 1 } },
+                    new() { TypeId = "block_2x2", DisplayName = "Block 2x2", Size = new[] { 2, 2 } }
+                }
+            };
+            var json = JsonSerializer.Serialize(defaults, new JsonSerializerOptions { WriteIndented = true });
+            WriteAllTextAtomic(path, json);
+            return defaults.Types.ToDictionary(item => item.TypeId, StringComparer.OrdinalIgnoreCase);
+        }
+
+        var text = File.ReadAllText(path, Encoding.UTF8);
+        var catalog = JsonSerializer.Deserialize<BlockingTypeCatalog>(text, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        if (catalog?.Types == null)
+        {
+            return new Dictionary<string, BlockingType>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return catalog.Types
+            .Where(item => !string.IsNullOrWhiteSpace(item.TypeId))
+            .ToDictionary(item => item.TypeId, StringComparer.OrdinalIgnoreCase);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Blocking types load error: {ex.Message}");
+        return new Dictionary<string, BlockingType>(StringComparer.OrdinalIgnoreCase);
+    }
+}
+
+public static BlockingChunk GetOrCreateBlockingChunk(BlockingWorld world, int cx, int cy)
+{
+    var id = new ChunkId(cx, cy);
+    if (world.Chunks.TryGetValue(id, out var chunk))
+    {
+        return chunk;
+    }
+
+    chunk = new BlockingChunk
+    {
+        X = cx,
+        Y = cy
+    };
+    world.Chunks[id] = chunk;
+    return chunk;
+}
+
+public static string BuildBlockingResponse(BlockingChunk chunk)
+{
+    var payload = new BlockingChunkPayload
+    {
+        X = chunk.X,
+        Y = chunk.Y,
+        Version = chunk.Version,
+        Blocks = chunk.Blocks
+    };
+
+    return JsonSerializer.Serialize(payload, new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    });
+}
+
+public static int ApplyBlockingEdits(BlockingWorld world, BlockingEditPayload update, Dictionary<string, BlockingType> blockingTypes)
+{
+    if (update.Changes == null || update.Changes.Length == 0)
+    {
+        return 0;
+    }
+
+    var applied = 0;
+    foreach (var change in update.Changes)
+    {
+        if (string.Equals(change.TypeId, "__remove__", StringComparison.OrdinalIgnoreCase))
+        {
+            var removeCx = FloorDiv(change.X, Chunk.ChunkSize);
+            var removeCy = FloorDiv(change.Y, Chunk.ChunkSize);
+            var removeChunk = GetOrCreateBlockingChunk(world, removeCx, removeCy);
+            var removed = removeChunk.Blocks.RemoveAll(b => b.X == change.X && b.Y == change.Y);
+            if (removed > 0)
+            {
+                removeChunk.Version++;
+                removeChunk.IsDirty = true;
+                applied += removed;
+            }
+            continue;
+        }
+
+        if (string.IsNullOrWhiteSpace(change.TypeId))
+        {
+            continue;
+        }
+
+        if (!blockingTypes.TryGetValue(change.TypeId, out var type))
+        {
+            continue;
+        }
+
+        var cx = FloorDiv(change.X, Chunk.ChunkSize);
+        var cy = FloorDiv(change.Y, Chunk.ChunkSize);
+        var chunk = GetOrCreateBlockingChunk(world, cx, cy);
+        var existing = chunk.Blocks.FirstOrDefault(b => b.X == change.X && b.Y == change.Y);
+        if (existing != null)
+        {
+            existing.TypeId = change.TypeId;
+            existing.UpdatedUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            chunk.Blocks.Add(new BlockingEntry
+            {
+                EntityId = Guid.NewGuid().ToString("N"),
+                TypeId = change.TypeId,
+                X = change.X,
+                Y = change.Y,
+                CreatedUtc = DateTime.UtcNow,
+                UpdatedUtc = DateTime.UtcNow
+            });
+        }
+
+        chunk.Version++;
+        chunk.IsDirty = true;
+        applied++;
+    }
+
+    return applied;
+}
+
+public static void SaveDirtyBlockingChunks(string dataDir, BlockingWorld world, object gate)
+{
+    List<(BlockingChunk chunk, int version)> dirty;
+    lock (gate)
+    {
+        dirty = world.Chunks.Values
+            .Where(chunk => chunk.IsDirty)
+            .Select(chunk => (chunk, chunk.Version))
+            .ToList();
+    }
+
+    foreach (var (chunk, version) in dirty)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(chunk, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            var path = Path.Combine(dataDir, $"blocking_{chunk.X}_{chunk.Y}.json");
+            WriteAllTextAtomic(path, json);
+            lock (gate)
+            {
+                if (chunk.Version == version)
+                {
+                    chunk.IsDirty = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Blocking chunk save error ({chunk.X},{chunk.Y}): {ex.Message}");
+        }
+    }
+}
+
+// ========== SURFACE WORLD ==========
+
+public readonly record struct SurfaceRequest(int Cx, int Cy, int LastKnownVersion);
+
+public sealed class SurfaceWorld
+{
+    public Dictionary<ChunkId, SurfaceChunk> Chunks { get; }
+
+    public SurfaceWorld(Dictionary<ChunkId, SurfaceChunk> chunks)
+    {
+        Chunks = chunks;
+    }
+}
+
+public sealed class SurfaceChunk
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Version { get; set; }
+    public List<SurfaceEntry> Surfaces { get; set; } = new();
+
+    [JsonIgnore]
+    public bool IsDirty { get; set; }
+}
+
+public sealed class SurfaceEntry
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int SurfaceId { get; set; }
+}
+
+public sealed class SurfaceChunkPayload
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Version { get; set; }
+    public List<SurfaceEntry> Surfaces { get; set; } = new();
+}
+
+public sealed class SurfaceEditPayload
+{
+    public SurfaceChange[] Changes { get; set; } = Array.Empty<SurfaceChange>();
+}
+
+public sealed class SurfaceChange
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int SurfaceId { get; set; }
+}
+
+public sealed class SurfaceType
+{
+    public int SurfaceId { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public double SpeedMod { get; init; } = 1.0;
+    public double Damage { get; init; }
+    public bool Blocking { get; init; }
+}
+
+public sealed class SurfaceTypeCatalog
+{
+    public List<SurfaceType> Types { get; set; } = new();
+}
+
+public static bool TryParseSurfaceRequest(string payload, out SurfaceRequest request, out string error)
+{
+    request = default;
+    error = string.Empty;
+
+    if (!payload.StartsWith("SURFACE|", StringComparison.Ordinal))
+    {
+        return false;
+    }
+
+    var parts = payload.Split('|');
+    if (parts.Length < 4)
+    {
+        error = "bad_surface";
+        return true;
+    }
+
+    if (!int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cx) ||
+        !int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var cy) ||
+        !int.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var lastKnownVersion))
+    {
+        error = "bad_surface";
+        return true;
+    }
+
+    request = new SurfaceRequest(cx, cy, lastKnownVersion);
+    return true;
+}
+
+public static bool TryParseSurfaceEdit(string payload, out SurfaceEditPayload update, out string error)
+{
+    update = new SurfaceEditPayload();
+    error = string.Empty;
+
+    if (!payload.StartsWith("SURFACE_EDIT|", StringComparison.Ordinal))
+    {
+        return false;
+    }
+
+    var json = payload.Substring("SURFACE_EDIT|".Length);
+    if (string.IsNullOrWhiteSpace(json))
+    {
+        error = "bad_surface_edit";
+        return true;
+    }
+
+    try
+    {
+        update = JsonSerializer.Deserialize<SurfaceEditPayload>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? new SurfaceEditPayload();
+    }
+    catch (Exception)
+    {
+        error = "bad_surface_edit";
+        return true;
+    }
+
+    if (update.Changes == null || update.Changes.Length == 0)
+    {
+        error = "bad_surface_edit";
+    }
+
+    return true;
+}
+
+public static SurfaceWorld LoadSurfaceWorld(string dataDir)
+{
+    var chunks = new Dictionary<ChunkId, SurfaceChunk>();
+    try
+    {
+        foreach (var path in Directory.EnumerateFiles(dataDir, "surface_*.json"))
+        {
+            var chunk = LoadSurfaceChunk(path);
+            if (chunk == null)
+            {
+                continue;
+            }
+
+            var id = new ChunkId(chunk.X, chunk.Y);
+            chunks[id] = chunk;
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Surface world load error: {ex.Message}");
+    }
+
+    return new SurfaceWorld(chunks);
+}
+
+public static SurfaceChunk? LoadSurfaceChunk(string path)
+{
+    try
+    {
+        var json = File.ReadAllText(path, Encoding.UTF8);
+        var chunk = JsonSerializer.Deserialize<SurfaceChunk>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        if (chunk == null)
+        {
+            return null;
+        }
+
+        chunk.Surfaces ??= new List<SurfaceEntry>();
+        chunk.IsDirty = false;
+        return chunk;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Surface chunk load error ({Path.GetFileName(path)}): {ex.Message}");
+        return null;
+    }
+}
+
+public static Dictionary<int, SurfaceType> LoadSurfaceTypes(string path)
+{
+    try
+    {
+        if (!File.Exists(path))
+        {
+            var defaults = new SurfaceTypeCatalog
+            {
+                Types = new List<SurfaceType>
+                {
+                    new() { SurfaceId = 0, Name = "ground", DisplayName = "Ground", SpeedMod = 1.0, Damage = 0, Blocking = false },
+                    new() { SurfaceId = 1, Name = "water_shallow", DisplayName = "Shallow Water", SpeedMod = 0.7, Damage = 0, Blocking = false },
+                    new() { SurfaceId = 2, Name = "water_deep", DisplayName = "Deep Water", SpeedMod = 0.3, Damage = 1, Blocking = true }
+                }
+            };
+            var json = JsonSerializer.Serialize(defaults, new JsonSerializerOptions { WriteIndented = true });
+            WriteAllTextAtomic(path, json);
+            return defaults.Types.ToDictionary(item => item.SurfaceId);
+        }
+
+        var text = File.ReadAllText(path, Encoding.UTF8);
+        var catalog = JsonSerializer.Deserialize<SurfaceTypeCatalog>(text, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+        if (catalog?.Types == null)
+        {
+            return new Dictionary<int, SurfaceType>();
+        }
+
+        return catalog.Types.ToDictionary(item => item.SurfaceId);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Surface types load error: {ex.Message}");
+        return new Dictionary<int, SurfaceType>();
+    }
+}
+
+public static SurfaceChunk GetOrCreateSurfaceChunk(SurfaceWorld world, int cx, int cy)
+{
+    var id = new ChunkId(cx, cy);
+    if (world.Chunks.TryGetValue(id, out var chunk))
+    {
+        return chunk;
+    }
+
+    chunk = new SurfaceChunk
+    {
+        X = cx,
+        Y = cy
+    };
+    world.Chunks[id] = chunk;
+    return chunk;
+}
+
+public static string BuildSurfaceResponse(SurfaceChunk chunk)
+{
+    var payload = new SurfaceChunkPayload
+    {
+        X = chunk.X,
+        Y = chunk.Y,
+        Version = chunk.Version,
+        Surfaces = chunk.Surfaces
+    };
+
+    return JsonSerializer.Serialize(payload, new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    });
+}
+
+public static int ApplySurfaceEdits(SurfaceWorld world, SurfaceEditPayload update)
+{
+    if (update.Changes == null || update.Changes.Length == 0)
+    {
+        return 0;
+    }
+
+    var applied = 0;
+    foreach (var change in update.Changes)
+    {
+        var cx = FloorDiv(change.X, Chunk.ChunkSize);
+        var cy = FloorDiv(change.Y, Chunk.ChunkSize);
+        var chunk = GetOrCreateSurfaceChunk(world, cx, cy);
+
+        if (change.SurfaceId == 0)
+        {
+            var removed = chunk.Surfaces.RemoveAll(s => s.X == change.X && s.Y == change.Y);
+            if (removed > 0)
+            {
+                chunk.Version++;
+                chunk.IsDirty = true;
+                applied += removed;
+            }
+            continue;
+        }
+
+        var existing = chunk.Surfaces.FirstOrDefault(s => s.X == change.X && s.Y == change.Y);
+        if (existing != null)
+        {
+            existing.SurfaceId = change.SurfaceId;
+        }
+        else
+        {
+            chunk.Surfaces.Add(new SurfaceEntry
+            {
+                X = change.X,
+                Y = change.Y,
+                SurfaceId = change.SurfaceId
+            });
+        }
+
+        chunk.Version++;
+        chunk.IsDirty = true;
+        applied++;
+    }
+
+    return applied;
+}
+
+public static void SaveDirtySurfaceChunks(string dataDir, SurfaceWorld world, object gate)
+{
+    List<(SurfaceChunk chunk, int version)> dirty;
+    lock (gate)
+    {
+        dirty = world.Chunks.Values
+            .Where(chunk => chunk.IsDirty)
+            .Select(chunk => (chunk, chunk.Version))
+            .ToList();
+    }
+
+    foreach (var (chunk, version) in dirty)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(chunk, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            var path = Path.Combine(dataDir, $"surface_{chunk.X}_{chunk.Y}.json");
+            WriteAllTextAtomic(path, json);
+            lock (gate)
+            {
+                if (chunk.Version == version)
+                {
+                    chunk.IsDirty = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Surface chunk save error ({chunk.X},{chunk.Y}): {ex.Message}");
+        }
+    }
+}
 }
