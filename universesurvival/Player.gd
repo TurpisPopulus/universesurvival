@@ -14,6 +14,8 @@ const NetworkCrypto = preload("res://NetworkCrypto.gd")
 @export var remote_scene: PackedScene = preload("res://remote_player.tscn")
 @export var appearance_payload: String = ""
 @export var resources_path: NodePath = NodePath("../WorldResources")
+@export var blocking_path: NodePath = NodePath("../WorldBlocking")
+@export var surface_path: NodePath = NodePath("../WorldSurface")
 @export var feet_block_tile_size: float = 32.0
 @onready var appearance: Node = get_node_or_null("Appearance")
 @onready var _collision_shape: CollisionShape2D = get_node_or_null("CollisionShape2D")
@@ -31,7 +33,11 @@ var _loading_blocked := true
 var _initial_state_sent := false
 var _server_confirmed := false
 var _resources
+var _blocking
+var _surface
 var _feet_offset := Vector2.ZERO
+var _current_speed_mod := 1.0
+var _current_damage := 0.0
 
 func _ready() -> void:
 	_rng.randomize()
@@ -40,6 +46,8 @@ func _ready() -> void:
 	if err != OK:
 		push_warning("UDP connect failed: %s:%s (err %s)" % [server_address, server_port, err])
 	_resources = get_node_or_null(resources_path)
+	_blocking = get_node_or_null(blocking_path)
+	_surface = get_node_or_null(surface_path)
 	_feet_offset = _compute_feet_offset()
 	if appearance != null and appearance_payload != "" and appearance.has_method("set_appearance_payload"):
 		appearance.set_appearance_payload(appearance_payload)
@@ -55,12 +63,15 @@ func _physics_process(delta: float) -> void:
 	if input.length() > 1.0:
 		input = input.normalized()
 
-	var target_velocity := input * speed
+	_update_surface_effects(delta)
+	var effective_speed = speed * _current_speed_mod
+	var target_velocity := input * effective_speed
 	if input == Vector2.ZERO:
 		velocity = velocity.move_toward(Vector2.ZERO, deceleration * delta)
 	else:
 		velocity = velocity.move_toward(target_velocity, acceleration * delta)
 	_apply_resource_blocking(delta)
+	_apply_blocking_check(delta)
 	move_and_slide()
 
 	if appearance != null and appearance.has_method("set_move_vector"):
@@ -188,9 +199,45 @@ func _is_blocked_at(body_pos: Vector2) -> bool:
 		Vector2(feet.x + half - 1.0, sample_y)
 	]
 	for point in sample_points:
-		if _resources.is_world_blocked(point):
+		if _resources != null and _resources.has_method("is_world_blocked") and _resources.is_world_blocked(point):
+			return true
+		if _blocking != null and _blocking.has_method("is_world_blocked") and _blocking.is_world_blocked(point):
+			return true
+		if _surface != null and _surface.has_method("is_world_blocked") and _surface.is_world_blocked(point):
 			return true
 	return false
+
+func _apply_blocking_check(delta: float) -> void:
+	if _blocking == null or not _blocking.has_method("is_world_blocked"):
+		return
+	if velocity == Vector2.ZERO:
+		return
+	var next_pos = global_position + velocity * delta
+	var feet = _get_feet_at(next_pos)
+	if not _blocking.is_world_blocked(feet):
+		return
+	var allow_x = not _blocking.is_world_blocked(_get_feet_at(Vector2(next_pos.x, global_position.y)))
+	var allow_y = not _blocking.is_world_blocked(_get_feet_at(Vector2(global_position.x, next_pos.y)))
+	if allow_x and not allow_y:
+		velocity.y = 0.0
+	elif allow_y and not allow_x:
+		velocity.x = 0.0
+	else:
+		velocity = Vector2.ZERO
+
+func _update_surface_effects(delta: float) -> void:
+	_current_speed_mod = 1.0
+	_current_damage = 0.0
+	if _surface == null or not _surface.has_method("get_surface_at"):
+		return
+	var feet = _get_feet_at(global_position)
+	var surface_data = _surface.get_surface_at(feet)
+	if surface_data == null or typeof(surface_data) != TYPE_DICTIONARY:
+		return
+	_current_speed_mod = float(surface_data.get("speedMod", 1.0))
+	_current_damage = float(surface_data.get("damage", 0.0))
+	if _current_damage > 0.0:
+		pass
 
 func _compute_feet_offset() -> Vector2:
 	if appearance != null:
