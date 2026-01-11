@@ -1,0 +1,14 @@
+{
+  "tilesets": [
+    {
+      "name": "terrain",
+      "displayName": "Terrain",
+      "path": "res://tiles/terrain.png"
+    },
+    {
+      "name": "ground",
+      "displayName": "Ground",
+      "path": "res://tiles/Ground.png"
+    }
+  ]
+}

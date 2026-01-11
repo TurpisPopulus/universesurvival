@@ -215,6 +215,7 @@
   WorldResources.gd
   WorldBlocking.gd
   WorldSurface.gd
+  TilesetManager.gd
   TilePalette.gd
   ObjectPalette.gd
   ResourcePalette.gd
@@ -223,6 +224,7 @@
   UnifiedMapEditor.gd
   UnifiedMapEditor.tscn
   data/
+    tilesets.json
     object_types.json
     resource_types.json
     blocking_types.json
@@ -348,14 +350,59 @@ SURFACE_EDIT|{...}</code></pre>
       </section>
 
       <section class="section">
+        <h2>Система тайлсетов (TilesetManager)</h2>
+        <div class="card">
+          <p>Клиент поддерживает работу с несколькими тайлсетами одновременно через глобальную систему ID:</p>
+          <ul>
+            <li><code>TilesetManager.gd</code> управляет преобразованием локальных ID тайлов в глобальные.</li>
+            <li>Глобальный ID = tileset_index * 100000 + local_tile_id (например: ground:52 = 100052).</li>
+            <li>Каждый тайлсет регистрируется с уникальным индексом при первом использовании.</li>
+            <li>Конфигурация тайлсетов хранится в <code>data/tilesets.json</code>.</li>
+            <li>При переключении тайлсетов в редакторе существующие тайлы на карте сохраняют свой исходный вид.</li>
+          </ul>
+          <p>Структура <code>data/tilesets.json</code>:</p>
+          <pre><code>{
+  "tilesets": [
+    { "name": "terrain", "displayName": "Terrain", "path": "res://tiles/terrain.png" },
+    { "name": "ground", "displayName": "Ground", "path": "res://tiles/Ground.png" }
+  ]
+}</code></pre>
+          <p><strong>Как добавить новый тайлсет:</strong></p>
+          <ul>
+            <li>Создай PNG с тайлами размером кратным 32x32.</li>
+            <li>Положи файл в <code>tiles/</code> (например, <code>tiles/buildings.png</code>).</li>
+            <li>Добавь запись в <code>data/tilesets.json</code> с уникальным name.</li>
+            <li>Тайлсет появится в выпадающем списке редактора автоматически.</li>
+            <li>TilesetManager автоматически присвоит ему следующий свободный индекс.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Палитра тайлов (TilePalette)</h2>
+        <div class="card">
+          <p>TilePalette отображает текущий тайлсет и позволяет выбирать тайлы кликом:</p>
+          <ul>
+            <li>Выпадающий список для переключения между доступными тайлсетами.</li>
+            <li>Текстура тайлсета отображается в ScrollContainer с вертикальной прокруткой.</li>
+            <li>Сетка тайлов вычисляется автоматически из размера текстуры (32x32 на тайл).</li>
+            <li>Клик по тайлу выбирает его для рисования и отправляет сигнал <code>tile_selected</code>.</li>
+            <li>Переключение тайлсета отправляет сигнал <code>tileset_changed</code> в WorldMap.</li>
+            <li>Выбранный тайл подсвечивается белой рамкой.</li>
+          </ul>
+          <p>Если окно редактора маленькое, а тайлсет большой, автоматически появляется вертикальная прокрутка.</p>
+        </div>
+      </section>
+
+      <section class="section">
         <h2>Редакторы карты, объектов и ресурсов</h2>
         <div class="card">
           <ul>
             <li>Админская кнопка открывает меню редакторов внутри игры.</li>
-            <li>Редактор карты использует <code>TilePalette.gd</code>, отправляет <code>EDIT</code> при сохранении.</li>
+            <li>Редактор карты использует <code>TilePalette.gd</code> с поддержкой нескольких тайлсетов, отправляет <code>EDIT</code> при сохранении.</li>
             <li>Редактор объектов использует <code>ObjectPalette.gd</code>, отправляет <code>OBJECT_EDIT</code>.</li>
             <li>Редактор ресурсов использует <code>ResourcePalette.gd</code>, отправляет <code>RESOURCE_EDIT</code>.</li>
-            <li>Локальные правки накапливаются и отправляются одной пачкой.</li>
+            <li>Локальные правки накапливаются и отправляются одной пачкой с глобальными ID тайлов.</li>
             <li>После сохранения клиент запрашивает обновленные чанки только для затронутых координат.</li>
           </ul>
         </div>

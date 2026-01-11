@@ -11,7 +11,7 @@ extends Node2D
 @onready var map_editor_save_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorSaveButton")
 @onready var map_editor_delete_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorDeleteButton")
 @onready var map_editor_back_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorBackButton")
-@onready var tile_palette: Node = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/TilePalette")
+@onready var tile_palette: Node = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/PaletteScroll/TilePalette")
 @onready var object_editor_panel: Control = get_node_or_null("Ui/ObjectEditorPanel")
 @onready var object_editor_save_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions/ObjectEditorSaveButton")
 @onready var object_editor_delete_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions/ObjectEditorDeleteButton")
@@ -91,8 +91,11 @@ func _ready() -> void:
 		map_editor_delete_button.pressed.connect(_on_map_editor_delete_pressed)
 	if map_editor_back_button != null:
 		map_editor_back_button.pressed.connect(_on_map_editor_back_pressed)
-	if tile_palette != null and tile_palette.has_signal("tile_selected"):
-		tile_palette.connect("tile_selected", Callable(self, "_on_tile_selected"))
+	if tile_palette != null:
+		if tile_palette.has_signal("tile_selected"):
+			tile_palette.connect("tile_selected", Callable(self, "_on_tile_selected"))
+		if tile_palette.has_signal("tileset_changed"):
+			tile_palette.connect("tileset_changed", Callable(self, "_on_tileset_changed"))
 	if object_editor_save_button != null:
 		object_editor_save_button.pressed.connect(_on_object_editor_save_pressed)
 	if object_editor_delete_button != null:
@@ -232,6 +235,10 @@ func _on_map_editor_save_pressed() -> void:
 func _on_tile_selected(tile_id: int) -> void:
 	if world_map != null and world_map.has_method("set_selected_tile"):
 		world_map.set_selected_tile(tile_id)
+
+func _on_tileset_changed(tileset_name: String) -> void:
+	if world_map != null and world_map.has_method("load_tileset"):
+		world_map.load_tileset(tileset_name)
 
 func _on_map_editor_delete_pressed() -> void:
 	if world_map != null and world_map.has_method("set_selected_tile"):

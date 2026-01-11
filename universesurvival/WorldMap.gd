@@ -1,6 +1,7 @@
 extends TileMap
 
 const NetworkCrypto = preload("res://NetworkCrypto.gd")
+const TilesetManager = preload("res://TilesetManager.gd")
 
 signal initial_load_progress(loaded: int, total: int)
 signal initial_load_completed
@@ -26,17 +27,23 @@ var _last_player_chunk = Vector2i(2147483647, 2147483647)
 var _udp = PacketPeerUDP.new()
 var _edit_mode = false
 var _selected_tile_id = 0
+var _selected_tileset = "terrain"
 var _pending_changes: Dictionary = {}
 var _chunk_versions: Dictionary = {}
 var _chunk_confirmed: Dictionary = {}
 var _poll_accum := 0.0
 
+var _tileset_manager: TilesetManager
+var _tileset_sources: Dictionary = {}  # {tileset_name: {source_id: int, atlas: Dictionary}}
 var _tile_atlas: Dictionary = {}
 var _initial_required: Dictionary = {}
 var _initial_total := 0
 var _initial_loaded := false
 
 func _ready() -> void:
+	_tileset_manager = TilesetManager.new()
+	add_child(_tileset_manager)
+
 	_player = get_node_or_null(player_path)
 	if _player == null:
 		push_warning("WorldMap: player not found. Set player_path in the scene.")
@@ -69,30 +76,103 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _setup_tileset() -> void:
-	var tileset = TileSet.new()
-	tileset.tile_size = Vector2i(TILE_SIZE, TILE_SIZE)
+	load_tileset("terrain")
 
-	var texture = load("res://tiles/terrain.png")
-	if texture == null:
-		push_warning("WorldMap: missing tileset texture res://tiles/terrain.png")
+func load_tileset(tileset_name: String) -> void:
+	_selected_tileset = tileset_name
+
+	# Если тайлсет уже загружен, просто переключаемся на него
+	if _tileset_sources.has(tileset_name):
+		var tileset_data = _tileset_sources[tileset_name]
+		_source_id = tileset_data["source_id"]
+		_tile_atlas = tileset_data["atlas"]
+		print("WorldMap: switched to existing tileset '", tileset_name, "'")
 		return
 
+	# Загружаем новый тайлсет
+	var tileset_path = _get_tileset_path(tileset_name)
+	if tileset_path == "":
+		push_warning("WorldMap: unknown tileset '%s'" % tileset_name)
+		return
+
+	var texture = load(tileset_path)
+	if texture == null:
+		push_warning("WorldMap: missing tileset texture %s" % tileset_path)
+		return
+
+	# Создаем TileSet если еще не создан
+	if tile_set == null:
+		tile_set = TileSet.new()
+		tile_set.tile_size = Vector2i(TILE_SIZE, TILE_SIZE)
+
+	# Создаем атлас для этого тайлсета
 	var atlas = TileSetAtlasSource.new()
 	atlas.texture = texture
 	atlas.texture_region_size = Vector2i(TILE_SIZE, TILE_SIZE)
 
-	_source_id = tileset.add_source(atlas)
-	_tile_atlas.clear()
+	var source_id = tile_set.add_source(atlas)
+	var tile_atlas = {}
+
 	var columns = max(1, int(texture.get_size().x / TILE_SIZE))
 	var rows = max(1, int(texture.get_size().y / TILE_SIZE))
+
 	for y in range(rows):
 		for x in range(columns):
 			var coords = Vector2i(x, y)
 			atlas.create_tile(coords)
-			var tile_id = y * columns + x
-			_tile_atlas[tile_id] = coords
+			var local_tile_id = y * columns + x
+			tile_atlas[local_tile_id] = coords
 
-	tile_set = tileset
+	_tileset_sources[tileset_name] = {
+		"source_id": source_id,
+		"atlas": tile_atlas,
+		"columns": columns,
+		"rows": rows
+	}
+
+	# Обновляем текущий source_id и atlas для обратной совместимости
+	_source_id = source_id
+	_tile_atlas = tile_atlas
+
+	print("WorldMap: loaded tileset '", tileset_name, "' with ", tile_atlas.size(), " tiles (", columns, "x", rows, ") as source ", source_id)
+	queue_redraw()
+
+func _get_tileset_path(tileset_name: String) -> String:
+	var config_path = "res://data/tilesets.json"
+	var file := FileAccess.open(config_path, FileAccess.READ)
+
+	if file == null:
+		return _get_default_tileset_path(tileset_name)
+
+	var text = file.get_as_text()
+	file.close()
+
+	var parsed = JSON.parse_string(text)
+	if parsed == null or typeof(parsed) != TYPE_DICTIONARY:
+		return _get_default_tileset_path(tileset_name)
+
+	var tilesets = parsed.get("tilesets", [])
+	if typeof(tilesets) != TYPE_ARRAY:
+		return _get_default_tileset_path(tileset_name)
+
+	for item in tilesets:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var name = str(item.get("name", "")).strip_edges()
+		var path = str(item.get("path", "")).strip_edges()
+		if name == tileset_name and path != "":
+			return path
+
+	return _get_default_tileset_path(tileset_name)
+
+func _get_default_tileset_path(tileset_name: String) -> String:
+	match tileset_name:
+		"terrain":
+			return "res://tiles/terrain.png"
+		"ground":
+			return "res://tiles/Ground.png"
+		_:
+			return "res://tiles/terrain.png"
 
 func _refresh_player_chunk() -> void:
 	if _player == null:
@@ -195,8 +275,18 @@ func _apply_chunk(chunk: Vector2i, tiles: Variant) -> void:
 	for y in range(CHUNK_SIZE_TILES):
 		for x in range(CHUNK_SIZE_TILES):
 			var tile_pos = Vector2i(start.x + x, start.y + y)
-			var tile_id = int(tiles_array[index])
-			_apply_tile_update(tile_pos, tile_id)
+			var global_tile_id = int(tiles_array[index])
+
+			# Декодируем глобальный ID в (tileset, local_tile_id)
+			var decoded = _tileset_manager.decode_global_tile_id(global_tile_id)
+			var tileset_name = decoded["tileset"]
+			var local_tile_id = decoded["tile_id"]
+
+			# Загружаем тайлсет если ещё не загружен
+			if tileset_name != "" and not _tileset_sources.has(tileset_name):
+				load_tileset(tileset_name)
+
+			_apply_tile_from_global(tile_pos, tileset_name, local_tile_id)
 			index += 1
 
 func set_editor_mode(enabled: bool) -> void:
@@ -205,9 +295,19 @@ func set_editor_mode(enabled: bool) -> void:
 func set_selected_tile(tile_id: int) -> void:
 	if tile_id < 0:
 		_selected_tile_id = tile_id
+		print("WorldMap: selected tile for deletion")
 		return
-	if _tile_atlas.has(tile_id):
-		_selected_tile_id = tile_id
+
+	# Сохраняем локальный ID и текущий тайлсет
+	_selected_tile_id = tile_id
+
+	# Проверяем, что тайл существует в текущем тайлсете
+	if _tileset_sources.has(_selected_tileset):
+		var tileset_data = _tileset_sources[_selected_tileset]
+		if tileset_data["atlas"].has(tile_id):
+			print("WorldMap: selected tile ID ", tile_id, " from tileset '", _selected_tileset, "'")
+		else:
+			print("WorldMap: WARNING - tile ID ", tile_id, " not found in tileset '", _selected_tileset, "'")
 
 func save_map_changes() -> void:
 	if _pending_changes.is_empty():
@@ -215,10 +315,17 @@ func save_map_changes() -> void:
 	var changes: Array = []
 	for pos in _pending_changes.keys():
 		var server_pos = pos + map_origin_tile
+		var local_tile_id = _pending_changes[pos]
+
+		# Преобразуем локальный ID в глобальный ID (tileset + tile_id)
+		var global_tile_id = local_tile_id
+		if local_tile_id >= 0:
+			global_tile_id = _tileset_manager.encode_global_tile_id(_selected_tileset, local_tile_id)
+
 		changes.append({
 			"x": server_pos.x,
 			"y": server_pos.y,
-			"tile": _pending_changes[pos]
+			"tile": global_tile_id
 		})
 	var payload = {
 		"changes": changes
@@ -241,9 +348,11 @@ func discard_map_changes() -> void:
 
 func _place_tile_at(world_pos: Vector2) -> void:
 	if _source_id == -1:
+		print("WorldMap: _place_tile_at - no source_id")
 		return
 	var local_pos = to_local(world_pos)
 	var cell = local_to_map(local_pos)
+	print("WorldMap: placing tile ", _selected_tile_id, " at cell ", cell)
 	_queue_tile_change(cell, _selected_tile_id)
 
 func _queue_tile_change(tile_pos: Vector2i, tile_id: int) -> void:
@@ -252,11 +361,14 @@ func _queue_tile_change(tile_pos: Vector2i, tile_id: int) -> void:
 	if tile_id < 0:
 		_pending_changes[tile_pos] = tile_id
 		erase_cell(0, tile_pos)
+		print("WorldMap: queued tile deletion at ", tile_pos)
 		return
 	if not _tile_atlas.has(tile_id):
+		print("WorldMap: ERROR - cannot place tile ", tile_id, " - not in atlas (atlas size: ", _tile_atlas.size(), ")")
 		return
 	_pending_changes[tile_pos] = tile_id
 	_apply_tile_update(tile_pos, tile_id)
+	print("WorldMap: queued tile ", tile_id, " at ", tile_pos)
 
 func _ensure_player() -> void:
 	if _player != null:
@@ -276,13 +388,43 @@ func _apply_tile_update(tile_pos: Vector2i, tile_id: int) -> void:
 	var atlas_coords = _tile_atlas.get(tile_id, TILE_GRASS)
 	set_cell(0, tile_pos, _source_id, atlas_coords)
 
+func _apply_tile_from_global(tile_pos: Vector2i, tileset_name: String, local_tile_id: int) -> void:
+	if local_tile_id < 0:
+		erase_cell(0, tile_pos)
+		return
+
+	if tileset_name == "":
+		return
+
+	if not _tileset_sources.has(tileset_name):
+		print("WorldMap: WARNING - tileset '", tileset_name, "' not loaded, cannot apply tile")
+		return
+
+	var tileset_data = _tileset_sources[tileset_name]
+	var source_id = tileset_data["source_id"]
+	var atlas = tileset_data["atlas"]
+
+	if atlas.has(local_tile_id):
+		var atlas_coords = atlas[local_tile_id]
+		set_cell(0, tile_pos, source_id, atlas_coords)
+	else:
+		print("WorldMap: WARNING - tile_id ", local_tile_id, " not found in tileset '", tileset_name, "'")
+
 func _apply_pending_for_chunk(chunk: Vector2i) -> void:
 	for pos in _pending_changes.keys():
 		var server_pos = pos + map_origin_tile
 		var cx = int(floor(server_pos.x / float(CHUNK_SIZE_TILES)))
 		var cy = int(floor(server_pos.y / float(CHUNK_SIZE_TILES)))
 		if cx == chunk.x and cy == chunk.y:
-			_apply_tile_update(pos, int(_pending_changes[pos]))
+			var global_tile_id = int(_pending_changes[pos])
+			var decoded = _tileset_manager.decode_global_tile_id(global_tile_id)
+			var tileset_name = decoded["tileset"]
+			var local_tile_id = decoded["tile_id"]
+
+			if tileset_name != "" and not _tileset_sources.has(tileset_name):
+				load_tileset(tileset_name)
+
+			_apply_tile_from_global(pos, tileset_name, local_tile_id)
 
 func _request_chunks_for_changes(changes: Array) -> void:
 	var requested := {}

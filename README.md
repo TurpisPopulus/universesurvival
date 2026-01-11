@@ -1,20 +1,176 @@
 # Universe Survival
 
-MMORPG-????????? ? UDP-???????? ?? C# ? ???????? ?? Godot.
+MMORPG-выживание с UDP-сервером на C# и клиентом на Godot.
 
-## ?????????
+## Структура проекта
 
-- `server/` ? ?????? (C#), ?????? ????? `run_server.bat` ??? `dotnet run`.
-- `universesurvival/` ? ?????? (Godot 4), ???????? ??????.
-- `universesurvival/ui/loading_screen.png` - ???????? ???????????? ?????? ???????.
-- `universesurvival/resources/tree_oak.png` - ?????? ??????? (?????? ?????? ????????? PNG).
-- `universesurvival/data/resource_types.json` - ???? ???????? (????, ??????????, texture).
-- `server/docs_server.html` - ???????????? ?? ???????.
-- `universesurvival/docs_client.html` - ???????????? ?? ???????.
-- `server/ver_server.html` ? `universesurvival/ver_client.html` - ??????? ??????.
-- `server/resource_types.json` - ???? ???????? ?? ??????? (RAM-first ??????).
+- `server/` - сервер (C#), запуск через `run_server.bat` или `dotnet run`
+- `universesurvival/` - клиент (Godot 4), открывай проект
+- `server/docs_server.html` - документация по серверу
+- `universesurvival/docs_client.html` - документация по клиенту
+- `server/ver_server.html` и `universesurvival/ver_client.html` - история версий
 
-## ??????? ?????
+## Быстрый старт
 
-1. ????????? ??????: `server/run_server.bat`.
-2. ???????? ?????? ? Godot ? ????????? ????? `main.tscn`.
+1. Запусти сервер: `server/run_server.bat`
+2. Открой проект в Godot и запусти сцену `main_menu.tscn`
+3. Создай персонажа (Create Player) и войди (Enter)
+
+## Ключевые возможности
+
+### Сервер (C#)
+- UDP-протокол с шифрованием SEC1 (HMAC-SHA256)
+- RAM-first архитектура: вся симуляция в памяти
+- Версионирование чанков карты/объектов/ресурсов
+- Система блокировок и поверхностей
+- Rate limiting и мониторинг производительности
+- Автосохранение в JSON
+
+### Клиент (Godot 4)
+- Система множественных тайлсетов (TilesetManager)
+- Редакторы: карты, объектов, ресурсов, блокировок, поверхностей
+- Paperdoll-система для персонажей с анимацией
+- Загрузочный экран с прогресс-баром
+- Меню паузы с настройками видео
+
+## Система тайлсетов
+
+Клиент поддерживает работу с несколькими тайлсетами одновременно:
+
+- Конфигурация: `universesurvival/data/tilesets.json`
+- Глобальные ID: `tileset_index * 100000 + local_tile_id`
+- Пример: `terrain:5 = 5`, `ground:52 = 100052`
+- Переключение тайлсета в редакторе не меняет существующие тайлы на карте
+
+### Добавление нового тайлсета
+
+1. Создай PNG с тайлами 32x32 (размер кратен 32)
+2. Положи в `universesurvival/tiles/` (например, `buildings.png`)
+3. Добавь в `universesurvival/data/tilesets.json`:
+```json
+{
+  "tilesets": [
+    { "name": "terrain", "displayName": "Terrain", "path": "res://tiles/terrain.png" },
+    { "name": "ground", "displayName": "Ground", "path": "res://tiles/Ground.png" },
+    { "name": "buildings", "displayName": "Buildings", "path": "res://tiles/buildings.png" }
+  ]
+}
+```
+4. Тайлсет появится в редакторе автоматически
+
+## Файловая структура
+
+### Данные сервера
+```
+server/
+  Program.cs              # основной код сервера
+  run_server.bat          # запуск
+  accounts.json           # аккаунты с хэшами паролей
+  players.json            # состояния игроков
+  object_types.json       # каталог объектов
+  resource_types.json     # каталог ресурсов
+  blocking_types.json     # каталог блокировок
+  surface_types.json      # каталог поверхностей
+  Data/
+    chunk_*.json          # чанки карты
+    objects_*.json        # чанки объектов
+    resources_*.json      # чанки ресурсов
+    blocking_*.json       # чанки блокировок
+    surface_*.json        # чанки поверхностей
+```
+
+### Данные клиента
+```
+universesurvival/
+  Main.gd, main.tscn           # игровая сцена
+  MainMenu.gd, main_menu.tscn  # главное меню
+  Player.gd                     # локальный игрок
+  RemotePlayer.gd               # удаленные игроки
+  WorldMap.gd                   # карта (TileMap)
+  WorldObjects.gd               # объекты
+  WorldResources.gd             # ресурсы
+  WorldBlocking.gd              # блокировки
+  WorldSurface.gd               # поверхности
+  TilesetManager.gd             # менеджер тайлсетов
+  TilePalette.gd                # палитра тайлов
+  ObjectPalette.gd              # палитра объектов
+  ResourcePalette.gd            # палитра ресурсов
+  BlockingPalette.gd            # палитра блокировок
+  SurfacePalette.gd             # палитра поверхностей
+  UnifiedMapEditor.gd/tscn      # унифицированный редактор
+  CharacterAppearance.gd        # paperdoll персонажа
+  NetworkCrypto.gd              # шифрование UDP
+  data/
+    tilesets.json               # конфигурация тайлсетов
+    object_types.json
+    resource_types.json
+    blocking_types.json
+    surface_types.json
+  tiles/
+    terrain.png                 # базовый тайлсет
+    Ground.png                  # дополнительный тайлсет
+    objects.png, objects_palette.png
+  resources/
+    tree_oak.png, tree_pine.png
+  characters/
+    body_*.png, heads.png, hair_*.png, etc.
+```
+
+## Протокол
+
+Все UDP-сообщения шифруются в конверт SEC1:
+```
+SEC1|base64(version|nonce|ciphertext|mac)
+```
+
+Основные команды:
+- `LOGIN|name|password` - вход
+- `REGISTER|name|password|appearance` - регистрация
+- `id|name|x|y|appearance` - позиционный пакет
+- `CHUNK|cx|cy|lastVersion` - запрос чанка карты
+- `EDIT|{...}` - изменение карты
+- `OBJECTS|cx|cy|lastVersion` - запрос объектов
+- `OBJECT_EDIT|{...}` - изменение объектов
+- `RESOURCES|cx|cy|lastVersion` - запрос ресурсов
+- `RESOURCE_EDIT|{...}` - изменение ресурсов
+- `BLOCKING|cx|cy|lastVersion` - запрос блокировок
+- `BLOCKING_EDIT|{...}` - изменение блокировок
+- `SURFACE|cx|cy|lastVersion` - запрос поверхностей
+- `SURFACE_EDIT|{...}` - изменение поверхностей
+
+## Безопасность
+
+- Все UDP-пакеты шифруются и подписываются (HMAC-SHA256)
+- Пароли хранятся как PBKDF2 хэш + соль
+- Rate limiting: 120 пакетов/сек по умолчанию
+- Общий ключ шифрования можно задать через `UNIVERSE_NET_KEY` (base64)
+
+⚠️ Общий ключ находится в клиенте и может быть извлечен. Для production используйте DTLS/Noise.
+
+## Разработка
+
+### Правило обновления документации
+
+При изменениях:
+1. Сервер → обнови `server/docs_server.html` и `server/ver_server.html` (+0.001)
+2. Клиент → обнови `universesurvival/docs_client.html` и `universesurvival/ver_client.html` (+0.001)
+3. Обнови `README.md` если добавляешь крупные фичи
+
+### Последние изменения
+
+**v0.075** (клиент, 2026-01-11):
+- Реализована система множественных тайлсетов (TilesetManager)
+- Глобальные ID тайлов для сохранения вида при переключении тайлсетов
+- Вертикальная прокрутка в палитре тайлов
+- Конфигурация тайлсетов через JSON
+
+**v0.074** (клиент, 2026-01-11):
+- Визуализация блокировок и поверхностей в редакторе
+- Блокировки ограничивают проход игрока
+- Поверхности влияют на скорость движения
+
+См. полную историю в `ver_client.html` и `ver_server.html`.
+
+## Лицензия
+
+Проект находится в разработке.

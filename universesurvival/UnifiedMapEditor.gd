@@ -80,6 +80,8 @@ func _setup_palettes() -> void:
 		palette_container.add_child(_tile_palette)
 		if _tile_palette.has_signal("tile_selected"):
 			_tile_palette.connect("tile_selected", Callable(self, "_on_tile_selected"))
+		if _tile_palette.has_signal("tileset_changed"):
+			_tile_palette.connect("tileset_changed", Callable(self, "_on_tileset_changed"))
 
 	var ObjectPaletteScript = load("res://ObjectPalette.gd")
 	if ObjectPaletteScript:
@@ -199,8 +201,18 @@ func _on_surface_pressed() -> void:
 	_set_mode(EditorMode.SURFACE)
 
 func _on_tile_selected(tile_id: int) -> void:
+	print("UnifiedMapEditor: received tile_selected signal with tile_id ", tile_id)
 	if _world_map != null and _world_map.has_method("set_selected_tile"):
 		_world_map.set_selected_tile(tile_id)
+	else:
+		print("UnifiedMapEditor: WARNING - _world_map is null or doesn't have set_selected_tile method")
+
+func _on_tileset_changed(tileset_name: String) -> void:
+	print("UnifiedMapEditor: received tileset_changed signal with tileset_name '", tileset_name, "'")
+	if _world_map != null and _world_map.has_method("load_tileset"):
+		_world_map.load_tileset(tileset_name)
+	else:
+		print("UnifiedMapEditor: WARNING - _world_map is null or doesn't have load_tileset method")
 
 func _on_object_selected(type_id: String, rotation: int) -> void:
 	if _world_objects != null and _world_objects.has_method("set_selected_object"):

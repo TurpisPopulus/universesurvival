@@ -181,7 +181,15 @@ theme_override_font_sizes/font_size = 20
 [node name="HSeparator1" type="HSeparator" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
 theme_override_constants/separation = 8
 
-[node name="TilePalette" type="TextureRect" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
+[node name="PaletteScroll" type="ScrollContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
+custom_minimum_size = Vector2(0, 200)
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="TilePalette" type="VBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/PaletteScroll"]
+size_flags_horizontal = 0
+size_flags_vertical = 0
 script = ExtResource("4_tile_palette")
 
 [node name="HSeparator2" type="HSeparator" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
