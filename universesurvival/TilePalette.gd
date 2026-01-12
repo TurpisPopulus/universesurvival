@@ -23,35 +23,34 @@ func _ready() -> void:
 		load_tileset(_current_tileset)
 
 func _load_tilesets_config() -> void:
-	var file := FileAccess.open(config_path, FileAccess.READ)
-	if file == null:
-		_setup_default_tilesets()
-		return
-
-	var text = file.get_as_text()
-	file.close()
-
-	var parsed = JSON.parse_string(text)
-	if parsed == null or typeof(parsed) != TYPE_DICTIONARY:
-		_setup_default_tilesets()
-		return
-
-	var tilesets = parsed.get("tilesets", [])
-	if typeof(tilesets) != TYPE_ARRAY:
-		_setup_default_tilesets()
-		return
-
+	# Автоматически сканируем папку tiles/ для всех PNG файлов
 	_tilesets.clear()
-	for item in tilesets:
-		if typeof(item) != TYPE_DICTIONARY:
-			continue
-		var name = str(item.get("name", "")).strip_edges()
-		var path = str(item.get("path", "")).strip_edges()
-		if name != "" and path != "":
-			_tilesets[name] = path
+	var dir := DirAccess.open("res://tiles/")
+
+	if dir == null:
+		print("TilePalette: ERROR - Cannot open tiles/ directory")
+		_setup_default_tilesets()
+		return
+
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.ends_with(".png") and not file_name.ends_with(".import"):
+			# Создаем имя тайлсета из имени файла (без расширения)
+			var tileset_name = file_name.trim_suffix(".png")
+			var tileset_path = "res://tiles/" + file_name
+			_tilesets[tileset_name] = tileset_path
+			print("TilePalette: Found tileset '", tileset_name, "' at '", tileset_path, "'")
+		file_name = dir.get_next()
+
+	dir.list_dir_end()
 
 	if _tilesets.is_empty():
+		print("TilePalette: WARNING - No PNG files found in tiles/")
 		_setup_default_tilesets()
+	else:
+		print("TilePalette: Loaded ", _tilesets.size(), " tilesets from tiles/ directory")
 
 func _setup_default_tilesets() -> void:
 	_tilesets = {

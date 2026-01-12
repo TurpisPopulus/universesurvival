@@ -357,24 +357,17 @@ SURFACE_EDIT|{...}</code></pre>
             <li><code>TilesetManager.gd</code> управляет преобразованием локальных ID тайлов в глобальные.</li>
             <li>Глобальный ID = tileset_index * 100000 + local_tile_id (например: ground:52 = 100052).</li>
             <li>Каждый тайлсет регистрируется с уникальным индексом при первом использовании.</li>
-            <li>Конфигурация тайлсетов хранится в <code>data/tilesets.json</code>.</li>
+            <li><strong>Автоматическое сканирование:</strong> TilesetManager и TilePalette автоматически загружают все PNG файлы из папки <code>tiles/</code>.</li>
             <li>При переключении тайлсетов в редакторе существующие тайлы на карте сохраняют свой исходный вид.</li>
           </ul>
-          <p>Структура <code>data/tilesets.json</code>:</p>
-          <pre><code>{
-  "tilesets": [
-    { "name": "terrain", "displayName": "Terrain", "path": "res://tiles/terrain.png" },
-    { "name": "ground", "displayName": "Ground", "path": "res://tiles/Ground.png" }
-  ]
-}</code></pre>
           <p><strong>Как добавить новый тайлсет:</strong></p>
           <ul>
             <li>Создай PNG с тайлами размером кратным 32x32.</li>
             <li>Положи файл в <code>tiles/</code> (например, <code>tiles/buildings.png</code>).</li>
-            <li>Добавь запись в <code>data/tilesets.json</code> с уникальным name.</li>
-            <li>Тайлсет появится в выпадающем списке редактора автоматически.</li>
-            <li>TilesetManager автоматически присвоит ему следующий свободный индекс.</li>
+            <li>Тайлсет автоматически появится в выпадающем списке редактора (имя = название файла без расширения).</li>
+            <li>TilesetManager автоматически присвоит ему следующий свободный индекс (сортировка по алфавиту).</li>
           </ul>
+          <p><strong>Примечание:</strong> Файл <code>data/tilesets.json</code> больше не используется - все тайлсеты загружаются автоматически из директории.</p>
         </div>
       </section>
 
@@ -395,16 +388,18 @@ SURFACE_EDIT|{...}</code></pre>
       </section>
 
       <section class="section">
-        <h2>Редакторы карты, объектов и ресурсов</h2>
+        <h2>Редакторы карты и ресурсов</h2>
         <div class="card">
           <ul>
-            <li>Админская кнопка открывает меню редакторов внутри игры.</li>
-            <li>Редактор карты использует <code>TilePalette.gd</code> с поддержкой нескольких тайлсетов, отправляет <code>EDIT</code> при сохранении.</li>
-            <li>Редактор объектов использует <code>ObjectPalette.gd</code>, отправляет <code>OBJECT_EDIT</code>.</li>
+            <li>Админская кнопка открывает меню с двумя редакторами: <strong>Редактор карты</strong> и <strong>Ресурсы</strong>.</li>
+            <li><strong>Редактор карты</strong> использует <code>TilePalette.gd</code> с поддержкой нескольких тайлсетов и панель статусов справа.</li>
+            <li>Панель статусов содержит кнопки для установки блокировок и типов поверхности: B (блокировка), S (мелководье), D (глубина), I (лёд), M (болото), очистка.</li>
+            <li>При открытии редактора карты автоматически включаются режимы редактирования для WorldMap, WorldBlocking и WorldSurface.</li>
             <li>Редактор ресурсов использует <code>ResourcePalette.gd</code>, отправляет <code>RESOURCE_EDIT</code>.</li>
             <li>Локальные правки накапливаются и отправляются одной пачкой с глобальными ID тайлов.</li>
             <li>После сохранения клиент запрашивает обновленные чанки только для затронутых координат.</li>
           </ul>
+          <p><strong>Примечание:</strong> Редактор объектов (ObjectEditorPanel) удален из интерфейса.</p>
         </div>
       </section>
 
@@ -444,7 +439,8 @@ PanelContainer
           <ul>
             <li>Блокировки загружаются с сервера по команде <code>BLOCKING</code>.</li>
             <li>Каждая блокировка может занимать несколько тайлов (1x1, 2x2, 3x3 и т.д.).</li>
-            <li>В режиме редактирования блокировки отображаются красными прямоугольниками.</li>
+            <li>В режиме редактирования блокировки отображаются как <strong>красная буква "B"</strong> (Color(1, 0.2, 0.2)) на полупрозрачном фоне.</li>
+            <li>Размер шрифта буквы: 20px, позиционируется по центру тайла.</li>
             <li>Вне редактора блокировки невидимы, но проверяются при движении.</li>
             <li>Проверка: <code>is_world_blocked(world_pos)</code> возвращает true если позиция заблокирована.</li>
           </ul>
@@ -465,7 +461,15 @@ PanelContainer
           <ul>
             <li>Поверхности загружаются с сервера по команде <code>SURFACE</code>.</li>
             <li>Каждый тайл может иметь свой тип поверхности.</li>
-            <li>В режиме редактирования поверхности отображаются цветными квадратами.</li>
+            <li>В режиме редактирования поверхности отображаются <strong>цветными буквами</strong> на полупрозрачном фоне:</li>
+            <ul>
+              <li><strong>"D"</strong> - Deep Water (глубина) - синий цвет</li>
+              <li><strong>"S"</strong> - Shallow Water (мелководье) - голубой цвет</li>
+              <li><strong>"W"</strong> - Water (вода) - средне-синий</li>
+              <li><strong>"I"</strong> - Ice (лёд) - светло-голубой</li>
+              <li><strong>"M"</strong> - Mud (болото) - коричневый</li>
+            </ul>
+            <li>Размер шрифта буквы: 20px, позиционируется по центру тайла.</li>
             <li><code>get_surface_at(world_pos)</code> возвращает параметры поверхности:</li>
           </ul>
           <pre><code>// Возвращаемый словарь
@@ -480,7 +484,9 @@ PanelContainer
   "types": [
     { "surfaceId": 0, "name": "ground", "displayName": "Ground", "speedMod": 1.0, "damage": 0, "blocking": false },
     { "surfaceId": 1, "name": "water_shallow", "displayName": "Shallow Water", "speedMod": 0.7, "damage": 0, "blocking": false },
-    { "surfaceId": 2, "name": "water_deep", "displayName": "Deep Water", "speedMod": 0.3, "damage": 1, "blocking": true }
+    { "surfaceId": 2, "name": "water_deep", "displayName": "Deep Water", "speedMod": 0.3, "damage": 1, "blocking": true },
+    { "surfaceId": 4, "name": "ice", "displayName": "Ice", "speedMod": 1.2, "damage": 0, "blocking": false },
+    { "surfaceId": 5, "name": "mud", "displayName": "Mud", "speedMod": 0.4, "damage": 0, "blocking": false }
   ]
 }</code></pre>
         </div>

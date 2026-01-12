@@ -111,11 +111,6 @@ custom_minimum_size = Vector2(0, 40)
 text = "🌍 Редактор карты"
 theme_override_font_sizes/font_size = 14
 
-[node name="AdminObjectEditorButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
-custom_minimum_size = Vector2(0, 40)
-text = "📦 Размещение объектов"
-theme_override_font_sizes/font_size = 14
-
 [node name="AdminResourceEditorButton" type="Button" parent="Ui/AdminMenu/AdminMargin/AdminVBox"]
 custom_minimum_size = Vector2(0, 40)
 text = "🌲 Ресурсы"
@@ -164,12 +159,14 @@ offset_bottom = 480.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_AdminPanel")
 
 [node name="MapEditorMargin" type="MarginContainer" parent="Ui/MapEditorPanel"]
+mouse_filter = 2
 theme_override_constants/margin_left = 20
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 20
 
 [node name="MapEditorVBox" type="VBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin"]
+mouse_filter = 2
 theme_override_constants/separation = 12
 
 [node name="MapEditorTitle" type="Label" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
@@ -181,21 +178,82 @@ theme_override_font_sizes/font_size = 20
 [node name="HSeparator1" type="HSeparator" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
 theme_override_constants/separation = 8
 
-[node name="PaletteScroll" type="ScrollContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
-custom_minimum_size = Vector2(0, 200)
+[node name="EditorContent" type="HBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
+mouse_filter = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="PaletteScroll" type="ScrollContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent"]
+custom_minimum_size = Vector2(150, 200)
+mouse_filter = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="TilePalette" type="VBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/PaletteScroll"]
+[node name="TilePalette" type="VBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/PaletteScroll"]
 size_flags_horizontal = 0
 size_flags_vertical = 0
 script = ExtResource("4_tile_palette")
+
+[node name="StatusPanel" type="VBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent"]
+custom_minimum_size = Vector2(80, 0)
+mouse_filter = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="StatusTitle" type="Label" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
+text = "Статусы"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 12
+
+[node name="BlockingButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
+custom_minimum_size = Vector2(0, 35)
+text = "B"
+theme_override_colors/font_color = Color(1, 0.2, 0.2, 1)
+theme_override_font_sizes/font_size = 18
+tooltip_text = "Блокировка (Непроходимо)"
+
+[node name="ShallowWaterButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
+custom_minimum_size = Vector2(0, 35)
+text = "S"
+theme_override_colors/font_color = Color(0.5, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 18
+tooltip_text = "Shallow Water (Мелководье)"
+
+[node name="DeepWaterButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
+custom_minimum_size = Vector2(0, 35)
+text = "D"
+theme_override_colors/font_color = Color(0, 0, 0.5, 1)
+theme_override_font_sizes/font_size = 18
+tooltip_text = "Deep Water (Глубина)"
+
+[node name="IceButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
+custom_minimum_size = Vector2(0, 35)
+text = "I"
+theme_override_colors/font_color = Color(0.7, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+tooltip_text = "Ice (Скользко)"
+
+[node name="MudButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
+custom_minimum_size = Vector2(0, 35)
+text = "M"
+theme_override_colors/font_color = Color(0.4, 0.2, 0.1, 1)
+theme_override_font_sizes/font_size = 18
+tooltip_text = "Mud (Болото)"
+
+[node name="ClearStatusButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
+custom_minimum_size = Vector2(0, 35)
+text = "✖"
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+theme_override_font_sizes/font_size = 18
+tooltip_text = "Очистить статус"
 
 [node name="HSeparator2" type="HSeparator" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
 theme_override_constants/separation = 8
 
 [node name="MapEditorActions" type="VBoxContainer" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox"]
+mouse_filter = 2
 theme_override_constants/separation = 10
 
 [node name="MapEditorSaveButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions"]
@@ -211,59 +269,6 @@ theme_override_colors/font_color = Color(1, 0.7, 0.5, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="MapEditorBackButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions"]
-custom_minimum_size = Vector2(0, 40)
-text = "❌ Назад"
-theme_override_colors/font_color = Color(1, 0.7, 0.7, 1)
-theme_override_font_sizes/font_size = 14
-
-[node name="ObjectEditorPanel" type="PanelContainer" parent="Ui"]
-visible = false
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 296.0
-offset_bottom = 480.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_AdminPanel")
-
-[node name="ObjectEditorMargin" type="MarginContainer" parent="Ui/ObjectEditorPanel"]
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 20
-
-[node name="ObjectEditorVBox" type="VBoxContainer" parent="Ui/ObjectEditorPanel/ObjectEditorMargin"]
-theme_override_constants/separation = 12
-
-[node name="ObjectEditorTitle" type="Label" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
-text = "📦 РАЗМЕЩЕНИЕ ОБЪЕКТОВ"
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
-theme_override_font_sizes/font_size = 20
-
-[node name="HSeparator1" type="HSeparator" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
-theme_override_constants/separation = 8
-
-[node name="ObjectPalette" type="TextureRect" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
-script = ExtResource("6_object_palette")
-
-[node name="HSeparator2" type="HSeparator" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
-theme_override_constants/separation = 8
-
-[node name="ObjectEditorActions" type="VBoxContainer" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox"]
-theme_override_constants/separation = 10
-
-[node name="ObjectEditorSaveButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions"]
-custom_minimum_size = Vector2(0, 40)
-text = "💾 Сохранить"
-theme_override_colors/font_color = Color(0.5, 1, 0.5, 1)
-theme_override_font_sizes/font_size = 14
-
-[node name="ObjectEditorDeleteButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions"]
-custom_minimum_size = Vector2(0, 40)
-text = "🗑 Удалить"
-theme_override_colors/font_color = Color(1, 0.7, 0.5, 1)
-theme_override_font_sizes/font_size = 14
-
-[node name="ObjectEditorBackButton" type="Button" parent="Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions"]
 custom_minimum_size = Vector2(0, 40)
 text = "❌ Назад"
 theme_override_colors/font_color = Color(1, 0.7, 0.7, 1)

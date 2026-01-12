@@ -72,7 +72,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var world_pos = get_global_mouse_position()
 		_place_block_at(world_pos)
-		get_viewport().set_input_as_handled()
 
 func _load_types() -> void:
 	_block_types.clear()
@@ -229,9 +228,11 @@ func set_editor_mode(enabled: bool) -> void:
 	_show_visual = enabled
 	set_process_unhandled_input(enabled)
 	_update_all_visuals()
+	print("WorldBlocking: editor mode = ", enabled, ", unhandled_input = ", is_processing_input())
 
 func set_selected_block(type_id: String) -> void:
 	_selected_type_id = type_id
+	print("WorldBlocking: selected block type = '", type_id, "'")
 
 func save_blocking_changes() -> void:
 	if _pending_changes.is_empty():
@@ -415,9 +416,9 @@ func _create_visual(base_pos: Vector2i, size: Vector2i, color: Color) -> void:
 
 	var label := Label.new()
 	label.text = "B"
-	label.add_theme_color_override("font_color", Color.RED)
-	label.add_theme_font_size_override("font_size", 24)
-	label.position = Vector2(size.x * TILE_SIZE * 0.5 - 8, size.y * TILE_SIZE * 0.5 - 12)
+	label.add_theme_color_override("font_color", Color(1, 0.2, 0.2, 1))
+	label.add_theme_font_size_override("font_size", 20)
+	label.position = Vector2(size.x * TILE_SIZE * 0.5 - 7, size.y * TILE_SIZE * 0.5 - 10)
 	container.add_child(label)
 
 	add_child(container)

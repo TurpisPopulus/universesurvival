@@ -70,7 +70,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var world_pos = get_global_mouse_position()
 		_place_surface_at(world_pos)
-		get_viewport().set_input_as_handled()
 
 func _load_types() -> void:
 	_surface_types.clear()
@@ -255,9 +254,11 @@ func set_editor_mode(enabled: bool) -> void:
 	_show_visual = enabled
 	set_process_unhandled_input(enabled)
 	_update_all_visuals()
+	print("WorldSurface: editor mode = ", enabled, ", unhandled_input = ", is_processing_input())
 
 func set_selected_surface(surface_id: int) -> void:
 	_selected_surface_id = surface_id
+	print("WorldSurface: selected surface ID = ", surface_id)
 
 func save_surface_changes() -> void:
 	if _pending_changes.is_empty():
@@ -387,21 +388,33 @@ func _update_visual(tile_pos: Vector2i, surface_id: int) -> void:
 	container.add_child(rect)
 
 	var letter := ""
+	var letter_color := Color.WHITE
+
 	if "deep" in name_str.to_lower() or "deep" in display_name.to_lower():
 		letter = "D"
+		letter_color = Color(0.2, 0.2, 1, 1)
 	elif "shallow" in name_str.to_lower() or "shallow" in display_name.to_lower():
 		letter = "S"
+		letter_color = Color(0.5, 0.8, 1, 1)
 	elif "water" in name_str.to_lower():
 		letter = "W"
+		letter_color = Color(0.3, 0.6, 1, 1)
+	elif "ice" in name_str.to_lower() or "ice" in display_name.to_lower():
+		letter = "I"
+		letter_color = Color(0.7, 1, 1, 1)
+	elif "mud" in name_str.to_lower() or "mud" in display_name.to_lower() or "болото" in display_name.to_lower():
+		letter = "M"
+		letter_color = Color(0.4, 0.2, 0.1, 1)
 	elif surface_id != 0:
 		letter = str(surface_id)
+		letter_color = Color.WHITE
 
 	if letter != "":
 		var label := Label.new()
 		label.text = letter
-		label.add_theme_color_override("font_color", Color.WHITE)
-		label.add_theme_font_size_override("font_size", 18)
-		label.position = Vector2(TILE_SIZE * 0.5 - 6, TILE_SIZE * 0.5 - 9)
+		label.add_theme_color_override("font_color", letter_color)
+		label.add_theme_font_size_override("font_size", 20)
+		label.position = Vector2(TILE_SIZE * 0.5 - 7, TILE_SIZE * 0.5 - 10)
 		container.add_child(label)
 
 	add_child(container)

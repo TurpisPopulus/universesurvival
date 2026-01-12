@@ -47,6 +47,7 @@ func _ready() -> void:
 	_player = get_node_or_null(player_path)
 	if _player == null:
 		push_warning("WorldMap: player not found. Set player_path in the scene.")
+	set_process_unhandled_input(false)
 
 	var err := _udp.connect_to_host(server_address, server_port)
 	if err != OK:
@@ -71,9 +72,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _edit_mode:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		print("WorldMap: mouse click detected at ", get_global_mouse_position())
 		var world_pos = get_global_mouse_position()
 		_place_tile_at(world_pos)
-		get_viewport().set_input_as_handled()
 
 func _setup_tileset() -> void:
 	load_tileset("terrain")
@@ -291,6 +292,8 @@ func _apply_chunk(chunk: Vector2i, tiles: Variant) -> void:
 
 func set_editor_mode(enabled: bool) -> void:
 	_edit_mode = enabled
+	set_process_unhandled_input(enabled)
+	print("WorldMap: editor mode = ", enabled, ", unhandled_input = ", is_processing_unhandled_input())
 
 func set_selected_tile(tile_id: int) -> void:
 	if tile_id < 0:

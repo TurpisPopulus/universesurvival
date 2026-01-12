@@ -4,19 +4,19 @@ extends Node2D
 @onready var admin_button: Button = get_node_or_null("Ui/AdminButton")
 @onready var admin_menu: Control = get_node_or_null("Ui/AdminMenu")
 @onready var admin_map_editor_button: Button = get_node_or_null("Ui/AdminMenu/AdminMargin/AdminVBox/AdminMapEditorButton")
-@onready var admin_object_editor_button: Button = get_node_or_null("Ui/AdminMenu/AdminMargin/AdminVBox/AdminObjectEditorButton")
 @onready var admin_resource_editor_button: Button = get_node_or_null("Ui/AdminMenu/AdminMargin/AdminVBox/AdminResourceEditorButton")
 @onready var admin_back_button: Button = get_node_or_null("Ui/AdminMenu/AdminMargin/AdminVBox/AdminBackButton")
 @onready var map_editor_panel: Control = get_node_or_null("Ui/MapEditorPanel")
 @onready var map_editor_save_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorSaveButton")
 @onready var map_editor_delete_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorDeleteButton")
 @onready var map_editor_back_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/MapEditorActions/MapEditorBackButton")
-@onready var tile_palette: Node = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/PaletteScroll/TilePalette")
-@onready var object_editor_panel: Control = get_node_or_null("Ui/ObjectEditorPanel")
-@onready var object_editor_save_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions/ObjectEditorSaveButton")
-@onready var object_editor_delete_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions/ObjectEditorDeleteButton")
-@onready var object_editor_back_button: Button = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectEditorActions/ObjectEditorBackButton")
-@onready var object_palette: Node = get_node_or_null("Ui/ObjectEditorPanel/ObjectEditorMargin/ObjectEditorVBox/ObjectPalette")
+@onready var tile_palette: Node = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/PaletteScroll/TilePalette")
+@onready var status_blocking_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel/BlockingButton")
+@onready var status_shallow_water_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel/ShallowWaterButton")
+@onready var status_deep_water_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel/DeepWaterButton")
+@onready var status_ice_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel/IceButton")
+@onready var status_mud_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel/MudButton")
+@onready var status_clear_button: Button = get_node_or_null("Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel/ClearStatusButton")
 @onready var resource_editor_panel: Control = get_node_or_null("Ui/ResourceEditorPanel")
 @onready var resource_editor_save_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourceEditorActions/ResourceEditorSaveButton")
 @onready var resource_editor_delete_button: Button = get_node_or_null("Ui/ResourceEditorPanel/ResourceEditorMargin/ResourceEditorVBox/ResourceEditorActions/ResourceEditorDeleteButton")
@@ -73,16 +73,12 @@ func _ready() -> void:
 		admin_menu.visible = false
 	if admin_map_editor_button != null:
 		admin_map_editor_button.pressed.connect(_on_admin_map_editor_pressed)
-	if admin_object_editor_button != null:
-		admin_object_editor_button.pressed.connect(_on_admin_object_editor_pressed)
 	if admin_resource_editor_button != null:
 		admin_resource_editor_button.pressed.connect(_on_admin_resource_editor_pressed)
 	if admin_back_button != null:
 		admin_back_button.pressed.connect(_on_admin_back_pressed)
 	if map_editor_panel != null:
 		map_editor_panel.visible = false
-	if object_editor_panel != null:
-		object_editor_panel.visible = false
 	if resource_editor_panel != null:
 		resource_editor_panel.visible = false
 	if map_editor_save_button != null:
@@ -96,14 +92,18 @@ func _ready() -> void:
 			tile_palette.connect("tile_selected", Callable(self, "_on_tile_selected"))
 		if tile_palette.has_signal("tileset_changed"):
 			tile_palette.connect("tileset_changed", Callable(self, "_on_tileset_changed"))
-	if object_editor_save_button != null:
-		object_editor_save_button.pressed.connect(_on_object_editor_save_pressed)
-	if object_editor_delete_button != null:
-		object_editor_delete_button.pressed.connect(_on_object_editor_delete_pressed)
-	if object_editor_back_button != null:
-		object_editor_back_button.pressed.connect(_on_object_editor_back_pressed)
-	if object_palette != null and object_palette.has_signal("object_selected"):
-		object_palette.connect("object_selected", Callable(self, "_on_object_selected"))
+	if status_blocking_button != null:
+		status_blocking_button.pressed.connect(_on_status_blocking_pressed)
+	if status_shallow_water_button != null:
+		status_shallow_water_button.pressed.connect(_on_status_shallow_water_pressed)
+	if status_deep_water_button != null:
+		status_deep_water_button.pressed.connect(_on_status_deep_water_pressed)
+	if status_ice_button != null:
+		status_ice_button.pressed.connect(_on_status_ice_pressed)
+	if status_mud_button != null:
+		status_mud_button.pressed.connect(_on_status_mud_pressed)
+	if status_clear_button != null:
+		status_clear_button.pressed.connect(_on_status_clear_pressed)
 	if resource_editor_save_button != null:
 		resource_editor_save_button.pressed.connect(_on_resource_editor_save_pressed)
 	if resource_editor_delete_button != null:
@@ -137,7 +137,6 @@ func _ready() -> void:
 		settings_mode.item_selected.connect(_on_mode_selected)
 	_setup_video_settings()
 	_on_tile_selected(0)
-	_on_object_selected("wall_wood", 0)
 	_on_resource_selected("tree_oak")
 	_setup_loading_overlay()
 	_bind_loading_signals()
@@ -171,8 +170,6 @@ func _on_admin_map_editor_pressed() -> void:
 		admin_menu.visible = false
 	if map_editor_panel != null:
 		map_editor_panel.visible = true
-	if object_editor_panel != null:
-		object_editor_panel.visible = false
 	if resource_editor_panel != null:
 		resource_editor_panel.visible = false
 	if world_map != null and world_map.has_method("set_editor_mode"):
@@ -181,22 +178,10 @@ func _on_admin_map_editor_pressed() -> void:
 		world_objects.set_editor_mode(false)
 	if world_resources != null and world_resources.has_method("set_editor_mode"):
 		world_resources.set_editor_mode(false)
-
-func _on_admin_object_editor_pressed() -> void:
-	if admin_menu != null:
-		admin_menu.visible = false
-	if object_editor_panel != null:
-		object_editor_panel.visible = true
-	if map_editor_panel != null:
-		map_editor_panel.visible = false
-	if resource_editor_panel != null:
-		resource_editor_panel.visible = false
-	if world_map != null and world_map.has_method("set_editor_mode"):
-		world_map.set_editor_mode(false)
-	if world_objects != null and world_objects.has_method("set_editor_mode"):
-		world_objects.set_editor_mode(true)
-	if world_resources != null and world_resources.has_method("set_editor_mode"):
-		world_resources.set_editor_mode(false)
+	if world_blocking != null and world_blocking.has_method("set_editor_mode"):
+		world_blocking.set_editor_mode(true)
+	if world_surface != null and world_surface.has_method("set_editor_mode"):
+		world_surface.set_editor_mode(true)
 
 func _on_admin_resource_editor_pressed() -> void:
 	if admin_menu != null:
@@ -205,8 +190,6 @@ func _on_admin_resource_editor_pressed() -> void:
 		resource_editor_panel.visible = true
 	if map_editor_panel != null:
 		map_editor_panel.visible = false
-	if object_editor_panel != null:
-		object_editor_panel.visible = false
 	if world_map != null and world_map.has_method("set_editor_mode"):
 		world_map.set_editor_mode(false)
 	if world_objects != null and world_objects.has_method("set_editor_mode"):
@@ -227,6 +210,10 @@ func _on_map_editor_back_pressed() -> void:
 		world_objects.set_editor_mode(false)
 	if world_resources != null and world_resources.has_method("set_editor_mode"):
 		world_resources.set_editor_mode(false)
+	if world_blocking != null and world_blocking.has_method("set_editor_mode"):
+		world_blocking.set_editor_mode(false)
+	if world_surface != null and world_surface.has_method("set_editor_mode"):
+		world_surface.set_editor_mode(false)
 
 func _on_map_editor_save_pressed() -> void:
 	if world_map != null and world_map.has_method("save_map_changes"):
@@ -244,29 +231,41 @@ func _on_map_editor_delete_pressed() -> void:
 	if world_map != null and world_map.has_method("set_selected_tile"):
 		world_map.set_selected_tile(-1)
 
-func _on_object_editor_back_pressed() -> void:
-	if object_editor_panel != null:
-		object_editor_panel.visible = false
-	if admin_menu != null:
-		admin_menu.visible = true
-	if world_objects != null and world_objects.has_method("discard_object_changes"):
-		world_objects.discard_object_changes()
-	if world_objects != null and world_objects.has_method("set_editor_mode"):
-		world_objects.set_editor_mode(false)
-	if world_resources != null and world_resources.has_method("set_editor_mode"):
-		world_resources.set_editor_mode(false)
+func _on_status_blocking_pressed() -> void:
+	if world_blocking != null and world_blocking.has_method("set_selected_block"):
+		world_blocking.set_selected_block("block_1x1")
+	if world_surface != null and world_surface.has_method("set_selected_surface"):
+		world_surface.set_selected_surface(-1)
 
-func _on_object_editor_save_pressed() -> void:
-	if world_objects != null and world_objects.has_method("save_object_changes"):
-		world_objects.save_object_changes()
+func _on_status_shallow_water_pressed() -> void:
+	if world_surface != null and world_surface.has_method("set_selected_surface"):
+		world_surface.set_selected_surface(1)  # water_shallow
+	if world_blocking != null and world_blocking.has_method("set_selected_block"):
+		world_blocking.set_selected_block("")
 
-func _on_object_editor_delete_pressed() -> void:
-	if world_objects != null and world_objects.has_method("set_selected_object"):
-		world_objects.set_selected_object("__remove__", 0)
+func _on_status_deep_water_pressed() -> void:
+	if world_surface != null and world_surface.has_method("set_selected_surface"):
+		world_surface.set_selected_surface(2)  # water_deep
+	if world_blocking != null and world_blocking.has_method("set_selected_block"):
+		world_blocking.set_selected_block("")
 
-func _on_object_selected(type_id: String, rotation: int) -> void:
-	if world_objects != null and world_objects.has_method("set_selected_object"):
-		world_objects.set_selected_object(type_id, rotation)
+func _on_status_ice_pressed() -> void:
+	if world_surface != null and world_surface.has_method("set_selected_surface"):
+		world_surface.set_selected_surface(4)  # ice
+	if world_blocking != null and world_blocking.has_method("set_selected_block"):
+		world_blocking.set_selected_block("")
+
+func _on_status_mud_pressed() -> void:
+	if world_surface != null and world_surface.has_method("set_selected_surface"):
+		world_surface.set_selected_surface(5)  # mud
+	if world_blocking != null and world_blocking.has_method("set_selected_block"):
+		world_blocking.set_selected_block("")
+
+func _on_status_clear_pressed() -> void:
+	if world_blocking != null and world_blocking.has_method("set_selected_block"):
+		world_blocking.set_selected_block("")
+	if world_surface != null and world_surface.has_method("set_selected_surface"):
+		world_surface.set_selected_surface(-1)
 
 func _on_resource_editor_back_pressed() -> void:
 	if resource_editor_panel != null:
