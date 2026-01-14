@@ -17,6 +17,7 @@ const BLOCKING_EDIT_PREFIX = "BLOCKING_EDIT|"
 @export var server_address: String = "127.0.0.1"
 @export var server_port: int = 7777
 @export var types_path: String = "res://data/blocking_types.json"
+@export var access_level: int = 5
 
 var _player
 var _loaded_chunks: Dictionary = {}
@@ -45,6 +46,10 @@ func _ready() -> void:
 	if _player == null:
 		push_warning("WorldBlocking: player not found. Set player_path in the scene.")
 	set_process_unhandled_input(false)
+
+	# Для администратора показываем блокировки всегда
+	if access_level == 1:
+		_show_visual = true
 
 	var err := _udp.connect_to_host(server_address, server_port)
 	if err != OK:
@@ -225,10 +230,18 @@ func _apply_blocking_chunk(chunk: Vector2i, blocks: Variant) -> void:
 
 func set_editor_mode(enabled: bool) -> void:
 	_edit_mode = enabled
-	_show_visual = enabled
+	_show_visual = enabled or access_level == 1
 	set_process_unhandled_input(enabled)
 	_update_all_visuals()
 	print("WorldBlocking: editor mode = ", enabled, ", unhandled_input = ", is_processing_input())
+
+func set_access_level(level: int) -> void:
+	access_level = level
+	# Обновляем видимость блокировок для администратора
+	if access_level == 1 and not _edit_mode:
+		_show_visual = true
+		_update_all_visuals()
+	print("WorldBlocking: access_level = ", access_level, ", show_visual = ", _show_visual)
 
 func set_selected_block(type_id: String) -> void:
 	_selected_type_id = type_id

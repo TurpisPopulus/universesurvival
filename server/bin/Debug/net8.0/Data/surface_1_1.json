@@ -1,42 +1,132 @@
 {
   "X": 1,
   "Y": 1,
-  "Version": 7,
+  "Version": 53,
   "Surfaces": [
     {
-      "X": 130,
-      "Y": 137,
-      "SurfaceId": 2
+      "X": 155,
+      "Y": 136,
+      "SurfaceId": -1
     },
     {
-      "X": 129,
-      "Y": 137,
-      "SurfaceId": 2
+      "X": 155,
+      "Y": 135,
+      "SurfaceId": -1
     },
     {
-      "X": 131,
+      "X": 155,
       "Y": 137,
-      "SurfaceId": 2
+      "SurfaceId": -1
     },
     {
-      "X": 130,
+      "X": 155,
       "Y": 138,
-      "SurfaceId": 2
+      "SurfaceId": -1
     },
     {
-      "X": 128,
-      "Y": 138,
-      "SurfaceId": 2
+      "X": 155,
+      "Y": 134,
+      "SurfaceId": -1
     },
     {
-      "X": 129,
-      "Y": 139,
-      "SurfaceId": 2
+      "X": 154,
+      "Y": 133,
+      "SurfaceId": -1
     },
     {
-      "X": 130,
-      "Y": 139,
-      "SurfaceId": 2
+      "X": 154,
+      "Y": 134,
+      "SurfaceId": -1
+    },
+    {
+      "X": 154,
+      "Y": 135,
+      "SurfaceId": -1
+    },
+    {
+      "X": 154,
+      "Y": 136,
+      "SurfaceId": -1
+    },
+    {
+      "X": 154,
+      "Y": 137,
+      "SurfaceId": -1
+    },
+    {
+      "X": 153,
+      "Y": 134,
+      "SurfaceId": -1
+    },
+    {
+      "X": 149,
+      "Y": 133,
+      "SurfaceId": -1
+    },
+    {
+      "X": 149,
+      "Y": 134,
+      "SurfaceId": -1
+    },
+    {
+      "X": 149,
+      "Y": 135,
+      "SurfaceId": -1
+    },
+    {
+      "X": 149,
+      "Y": 136,
+      "SurfaceId": -1
+    },
+    {
+      "X": 149,
+      "Y": 137,
+      "SurfaceId": -1
+    },
+    {
+      "X": 150,
+      "Y": 133,
+      "SurfaceId": -1
+    },
+    {
+      "X": 150,
+      "Y": 134,
+      "SurfaceId": -1
+    },
+    {
+      "X": 150,
+      "Y": 135,
+      "SurfaceId": -1
+    },
+    {
+      "X": 150,
+      "Y": 136,
+      "SurfaceId": -1
+    },
+    {
+      "X": 150,
+      "Y": 137,
+      "SurfaceId": -1
+    },
+    {
+      "X": 149,
+      "Y": 129,
+      "SurfaceId": -1
+    },
+    {
+      "X": 149,
+      "Y": 128,
+      "SurfaceId": -1
+    },
+    {
+      "X": 150,
+      "Y": 128,
+      "SurfaceId": -1
+    },
+    {
+      "X": 150,
+      "Y": 129,
+      "SurfaceId": -1
     }
   ]
 }

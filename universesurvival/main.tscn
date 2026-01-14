@@ -59,7 +59,7 @@ script = ExtResource("10_world_blocking")
 player_path = NodePath("../Player")
 
 [node name="WorldSurface" type="Node2D" parent="."]
-z_index = -2
+z_index = 1
 script = ExtResource("11_world_surface")
 player_path = NodePath("../Player")
 
@@ -209,6 +209,7 @@ theme_override_font_sizes/font_size = 12
 
 [node name="BlockingButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
 custom_minimum_size = Vector2(0, 35)
+toggle_mode = true
 text = "B"
 theme_override_colors/font_color = Color(1, 0.2, 0.2, 1)
 theme_override_font_sizes/font_size = 18
@@ -216,6 +217,7 @@ tooltip_text = "Блокировка (Непроходимо)"
 
 [node name="ShallowWaterButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
 custom_minimum_size = Vector2(0, 35)
+toggle_mode = true
 text = "S"
 theme_override_colors/font_color = Color(0.5, 0.8, 1, 1)
 theme_override_font_sizes/font_size = 18
@@ -223,6 +225,7 @@ tooltip_text = "Shallow Water (Мелководье)"
 
 [node name="DeepWaterButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
 custom_minimum_size = Vector2(0, 35)
+toggle_mode = true
 text = "D"
 theme_override_colors/font_color = Color(0, 0, 0.5, 1)
 theme_override_font_sizes/font_size = 18
@@ -230,6 +233,7 @@ tooltip_text = "Deep Water (Глубина)"
 
 [node name="IceButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
 custom_minimum_size = Vector2(0, 35)
+toggle_mode = true
 text = "I"
 theme_override_colors/font_color = Color(0.7, 1, 1, 1)
 theme_override_font_sizes/font_size = 18
@@ -237,6 +241,7 @@ tooltip_text = "Ice (Скользко)"
 
 [node name="MudButton" type="Button" parent="Ui/MapEditorPanel/MapEditorMargin/MapEditorVBox/EditorContent/StatusPanel"]
 custom_minimum_size = Vector2(0, 35)
+toggle_mode = true
 text = "M"
 theme_override_colors/font_color = Color(0.4, 0.2, 0.1, 1)
 theme_override_font_sizes/font_size = 18

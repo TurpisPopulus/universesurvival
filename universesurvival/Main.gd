@@ -63,9 +63,15 @@ var _server_confirmed := false
 var _resolution_options: Array[Vector2i] = []
 var _pending_windowed_size := Vector2i.ZERO
 var _updating_video_ui := false
+var _current_edit_mode: String = "none"  # "tiles", "status", "none"
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+	# Передаём уровень доступа в WorldBlocking
+	if world_blocking != null and world_blocking.has_method("set_access_level"):
+		world_blocking.set_access_level(access_level)
+
 	if admin_button != null:
 		admin_button.visible = access_level == 1
 		admin_button.pressed.connect(_on_admin_button_pressed)
@@ -218,10 +224,26 @@ func _on_map_editor_back_pressed() -> void:
 func _on_map_editor_save_pressed() -> void:
 	if world_map != null and world_map.has_method("save_map_changes"):
 		world_map.save_map_changes()
+	if world_blocking != null and world_blocking.has_method("save_blocking_changes"):
+		world_blocking.save_blocking_changes()
+	if world_surface != null and world_surface.has_method("save_surface_changes"):
+		world_surface.save_surface_changes()
 
 func _on_tile_selected(tile_id: int) -> void:
+	# СНАЧАЛА снимаем выбор со всех кнопок статусов
+	_unpress_all_status_buttons()
+
+	# Устанавливаем режим тайлов
+	_current_edit_mode = "tiles"
+
+	# Включаем редактирование тайлов
 	if world_map != null and world_map.has_method("set_selected_tile"):
 		world_map.set_selected_tile(tile_id)
+	# Отключаем редактирование блокировок и поверхностей
+	if world_blocking != null and world_blocking.has_method("set_selected_block"):
+		world_blocking.set_selected_block("")
+	if world_surface != null and world_surface.has_method("set_selected_surface"):
+		world_surface.set_selected_surface(-1)
 
 func _on_tileset_changed(tileset_name: String) -> void:
 	if world_map != null and world_map.has_method("load_tileset"):
@@ -232,40 +254,142 @@ func _on_map_editor_delete_pressed() -> void:
 		world_map.set_selected_tile(-1)
 
 func _on_status_blocking_pressed() -> void:
+	# Устанавливаем режим статусов
+	_current_edit_mode = "status"
+
+	# Отключаем редактирование тайлов
+	if world_map != null and world_map.has_method("set_selected_tile"):
+		world_map.set_selected_tile(-1)
+	# Сбрасываем визуальное выделение палитры
+	_clear_tile_palette_selection()
+	# Включаем редактирование блокировок
 	if world_blocking != null and world_blocking.has_method("set_selected_block"):
 		world_blocking.set_selected_block("block_1x1")
+	# Отключаем редактирование поверхностей
 	if world_surface != null and world_surface.has_method("set_selected_surface"):
 		world_surface.set_selected_surface(-1)
+	# Управляем состоянием кнопок
+	_unpress_all_status_buttons()
+	if status_blocking_button != null:
+		status_blocking_button.set_pressed_no_signal(true)
 
 func _on_status_shallow_water_pressed() -> void:
+	# Устанавливаем режим статусов
+	_current_edit_mode = "status"
+
+	# Отключаем редактирование тайлов
+	if world_map != null and world_map.has_method("set_selected_tile"):
+		world_map.set_selected_tile(-1)
+	# Сбрасываем визуальное выделение палитры
+	_clear_tile_palette_selection()
+	# Включаем редактирование поверхностей
 	if world_surface != null and world_surface.has_method("set_selected_surface"):
 		world_surface.set_selected_surface(1)  # water_shallow
+	# Отключаем редактирование блокировок
 	if world_blocking != null and world_blocking.has_method("set_selected_block"):
 		world_blocking.set_selected_block("")
+	# Управляем состоянием кнопок
+	_unpress_all_status_buttons()
+	if status_shallow_water_button != null:
+		status_shallow_water_button.set_pressed_no_signal(true)
 
 func _on_status_deep_water_pressed() -> void:
+	# Устанавливаем режим статусов
+	_current_edit_mode = "status"
+
+	# Отключаем редактирование тайлов
+	if world_map != null and world_map.has_method("set_selected_tile"):
+		world_map.set_selected_tile(-1)
+	# Сбрасываем визуальное выделение палитры
+	_clear_tile_palette_selection()
+	# Включаем редактирование поверхностей
 	if world_surface != null and world_surface.has_method("set_selected_surface"):
 		world_surface.set_selected_surface(2)  # water_deep
+	# Отключаем редактирование блокировок
 	if world_blocking != null and world_blocking.has_method("set_selected_block"):
 		world_blocking.set_selected_block("")
+	# Управляем состоянием кнопок
+	_unpress_all_status_buttons()
+	if status_deep_water_button != null:
+		status_deep_water_button.set_pressed_no_signal(true)
 
 func _on_status_ice_pressed() -> void:
+	# Устанавливаем режим статусов
+	_current_edit_mode = "status"
+
+	# Отключаем редактирование тайлов
+	if world_map != null and world_map.has_method("set_selected_tile"):
+		world_map.set_selected_tile(-1)
+	# Сбрасываем визуальное выделение палитры
+	_clear_tile_palette_selection()
+	# Включаем редактирование поверхностей
 	if world_surface != null and world_surface.has_method("set_selected_surface"):
 		world_surface.set_selected_surface(4)  # ice
+	# Отключаем редактирование блокировок
 	if world_blocking != null and world_blocking.has_method("set_selected_block"):
 		world_blocking.set_selected_block("")
+	# Управляем состоянием кнопок
+	_unpress_all_status_buttons()
+	if status_ice_button != null:
+		status_ice_button.set_pressed_no_signal(true)
 
 func _on_status_mud_pressed() -> void:
+	# Устанавливаем режим статусов
+	_current_edit_mode = "status"
+
+	# Отключаем редактирование тайлов
+	if world_map != null and world_map.has_method("set_selected_tile"):
+		world_map.set_selected_tile(-1)
+	# Сбрасываем визуальное выделение палитры
+	_clear_tile_palette_selection()
+	# Включаем редактирование поверхностей
 	if world_surface != null and world_surface.has_method("set_selected_surface"):
 		world_surface.set_selected_surface(5)  # mud
+	# Отключаем редактирование блокировок
 	if world_blocking != null and world_blocking.has_method("set_selected_block"):
 		world_blocking.set_selected_block("")
+	# Управляем состоянием кнопок
+	_unpress_all_status_buttons()
+	if status_mud_button != null:
+		status_mud_button.set_pressed_no_signal(true)
 
 func _on_status_clear_pressed() -> void:
+	# Сбрасываем режим
+	_current_edit_mode = "none"
+
+	# Отключаем все режимы редактирования
+	if world_map != null and world_map.has_method("set_selected_tile"):
+		world_map.set_selected_tile(-1)
 	if world_blocking != null and world_blocking.has_method("set_selected_block"):
 		world_blocking.set_selected_block("")
 	if world_surface != null and world_surface.has_method("set_selected_surface"):
 		world_surface.set_selected_surface(-1)
+	# Снимаем выбор со всех кнопок
+	_unpress_all_status_buttons()
+	# Сбрасываем визуальное выделение палитры
+	_clear_tile_palette_selection()
+	print("Main: режим редактирования - ОТКЛЮЧЕН")
+
+func _unpress_all_status_buttons() -> void:
+	if status_blocking_button != null:
+		status_blocking_button.set_pressed_no_signal(false)
+		status_blocking_button.release_focus()
+	if status_shallow_water_button != null:
+		status_shallow_water_button.set_pressed_no_signal(false)
+		status_shallow_water_button.release_focus()
+	if status_deep_water_button != null:
+		status_deep_water_button.set_pressed_no_signal(false)
+		status_deep_water_button.release_focus()
+	if status_ice_button != null:
+		status_ice_button.set_pressed_no_signal(false)
+		status_ice_button.release_focus()
+	if status_mud_button != null:
+		status_mud_button.set_pressed_no_signal(false)
+		status_mud_button.release_focus()
+
+func _clear_tile_palette_selection() -> void:
+	if tile_palette != null and tile_palette.has_method("clear_selection"):
+		tile_palette.clear_selection()
 
 func _on_resource_editor_back_pressed() -> void:
 	if resource_editor_panel != null:

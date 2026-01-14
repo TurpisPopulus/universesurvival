@@ -124,6 +124,11 @@ func _update_texture_properties() -> void:
 func get_current_tileset() -> String:
 	return _current_tileset
 
+func clear_selection() -> void:
+	_selected_coords = Vector2i(-1, -1)
+	if _texture_rect != null:
+		_texture_rect.queue_redraw()
+
 func _on_texture_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var local_pos = _to_texture_space(_texture_rect.get_local_mouse_position())
@@ -137,6 +142,9 @@ func _on_texture_gui_input(event: InputEvent) -> void:
 		_texture_rect.queue_redraw()
 
 func _on_texture_draw() -> void:
+	# Не рисуем выделение, если координаты отрицательные (сброшены)
+	if _selected_coords.x < 0 or _selected_coords.y < 0:
+		return
 	var pos = Vector2(_selected_coords.x * tile_size, _selected_coords.y * tile_size)
 	var rect = Rect2(pos, Vector2(tile_size, tile_size))
 	_texture_rect.draw_rect(rect, Color(1, 1, 1, 0.25), true)
